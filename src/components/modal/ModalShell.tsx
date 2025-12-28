@@ -7,9 +7,10 @@ type Props = {
   title?: string;
   onClose: () => void;
   children: React.ReactNode;
+  closeLabel: string;
 };
 
-export default function ModalShell({ open, title, onClose, children }: Props) {
+export default function ModalShell({ open, title, onClose, children, closeLabel }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function ModalShell({ open, title, onClose, children }: Props) {
             type="button"
             className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-sm hover:bg-white/10"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={closeLabel}
           >
             ✕
           </button>

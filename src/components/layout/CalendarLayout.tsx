@@ -1,6 +1,7 @@
 import Sidebar from '@/components/sidebar/Sidebar';
 import CalendarHeader from '@/components/header/CalendarHeader';
 import type { CalendarItem } from '@/data/mock.calendars';
+import type { Labels, Language } from '@/lib/i18n';
 
 type Props = {
   title: string;
@@ -17,6 +18,9 @@ type Props = {
   onChangeSearch: (v: string) => void;
   theme: 'dark' | 'light';
   onChangeTheme: (next: 'dark' | 'light') => void;
+  language: Language;
+  onChangeLanguage: (next: Language) => void;
+  labels: Labels;
 
   children: React.ReactNode;
 };
@@ -26,6 +30,8 @@ export default function CalendarLayout({
   calendars, onToggleCalendar, onAddCalendar, onEditCalendar,
   searchQuery, onChangeSearch,
   theme, onChangeTheme,
+  language, onChangeLanguage,
+  labels,
   children,
 }: Props) {
   return (
@@ -39,6 +45,9 @@ export default function CalendarLayout({
             onEditCalendar={onEditCalendar}
             theme={theme}
             onChangeTheme={onChangeTheme}
+            language={language}
+            onChangeLanguage={onChangeLanguage}
+            labels={labels}
           />
         </aside>
 
@@ -50,6 +59,7 @@ export default function CalendarLayout({
             onToday={onToday}
             searchQuery={searchQuery}
             onChangeSearch={onChangeSearch}
+            labels={labels}
           />
           <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
         </main>

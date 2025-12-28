@@ -17,6 +17,7 @@ type Props = {
   onDragEnter: (dateKey: string) => void;
   suppressClick: boolean;
   isDragging: boolean;
+  moreLabel: (count: number) => string;
 };
 
 export default function DayCell({
@@ -31,6 +32,7 @@ export default function DayCell({
   onDragEnter,
   suppressClick,
   isDragging,
+  moreLabel,
 }: Props) {
   const key = toDateKey(day.date);
 
@@ -106,7 +108,7 @@ export default function DayCell({
                 className="text-[10px] leading-4 text-white/55 text-center hover:text-white/75"
                 onClick={(ev) => { ev.stopPropagation(); onClickMore(key, dayEvents); }}
                 >
-                +{remaining}개 더
+                {moreLabel(remaining)}
             </button>
         )}
         </div>

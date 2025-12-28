@@ -8,9 +8,17 @@ type Props = {
   checked: boolean;
   onToggle?: () => void;
   onEdit?: () => void;
+  editLabel: string;
 };
 
-export default function CalendarToggleItem({ name, color, checked, onToggle, onEdit }: Props) {
+export default function CalendarToggleItem({
+  name,
+  color,
+  checked,
+  onToggle,
+  onEdit,
+  editLabel,
+}: Props) {
   return (
     <div
       role="button"
@@ -45,7 +53,7 @@ export default function CalendarToggleItem({ name, color, checked, onToggle, onE
             onEdit?.();
           }}
         >
-          편집
+          {editLabel}
         </button>
       </span>
     </div>

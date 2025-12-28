@@ -10,6 +10,8 @@ export function addMonths(ym: YearMonth, diff: number): YearMonth {
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-export function formatYearMonthKR(ym: YearMonth): string {
-  return `${ym.year}년 ${ym.month + 1}월`;
+export function formatYearMonth(ym: YearMonth, language: 'ko' | 'en'): string {
+  const date = new Date(ym.year, ym.month, 1);
+  const locale = language === 'en' ? 'en-US' : 'ko-KR';
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(date);
 }

@@ -6,9 +6,10 @@ type Props = {
   items: CalendarItem[];
   onToggle: (id: string) => void;
   onEdit: (id: string) => void;
+  editLabel: string;
 };
 
-export default function CalendarGroup({ title, items, onToggle, onEdit }: Props) {
+export default function CalendarGroup({ title, items, onToggle, onEdit, editLabel }: Props) {
   return (
     <section className="mb-4">
       <div className="px-3 pb-2 text-xs font-semibold tracking-wide text-white/45">
@@ -23,6 +24,7 @@ export default function CalendarGroup({ title, items, onToggle, onEdit }: Props)
             checked={it.checked}
             onToggle={() => onToggle(it.id)}
             onEdit={() => onEdit(it.id)}
+            editLabel={editLabel}
           />
         ))}
       </div>

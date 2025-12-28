@@ -9,6 +9,7 @@ import type { CalendarEvent } from '@/data/mock.events';
 import type { CalendarItem } from '@/data/mock.calendars';
 import { parseYmd, clampDate, toYmd } from '@/lib/date/ymd';
 import { filterVisibleEvents, isMultiDayEvent } from '@/lib/events/filters';
+import type { Labels } from '@/lib/i18n';
 
 type Props = {
   year: number;
@@ -21,6 +22,7 @@ type Props = {
   onClickMore: (dateKey: string, events: CalendarEvent[]) => void;
   onClickTempRange: (startDateKey: string, endDateKey: string) => void;
   clearTempToken?: number;
+  labels: Labels;
 };
 
 type Segment = {
@@ -52,6 +54,7 @@ export default function MonthGrid({
   onClickMore,
   onClickTempRange,
   clearTempToken,
+  labels,
 }: Props) {
   const [dragging, setDragging] = useState(false);
   const [dragStartKey, setDragStartKey] = useState<string | null>(null);
@@ -79,11 +82,11 @@ export default function MonthGrid({
     return {
       id: TEMP_EVENT_ID,
       calendarId,
-      title: '일정',
+      title: labels.month.tempEventTitle,
       startDate,
       endDate: startDate === endDate ? undefined : endDate,
     } satisfies CalendarEvent;
-  }, [calendars]);
+  }, [calendars, labels]);
 
   const displayEvents = useMemo(() => {
     if (!tempEvent) return visibleEvents;
@@ -215,7 +218,7 @@ export default function MonthGrid({
 
   return (
     <div className="rounded-xl overflow-hidden border border-white/10">
-      <WeekdayRow />
+      <WeekdayRow days={labels.month.weekdays} />
 
       {/* Week rows */}
       <div className="grid grid-rows-6">
@@ -268,6 +271,7 @@ export default function MonthGrid({
                     onDragEnter={onDragEnter}
                     suppressClick={suppressClick}
                     isDragging={dragging}
+                    moreLabel={labels.month.moreItems}
                     />
                 ))}
               </div>
@@ -351,7 +355,7 @@ export default function MonthGrid({
 
                 {maxHiddenCount > 0 && (
                     <div className="mt-[2px] text-center text-[10px] leading-4 text-white/55">
-                    +{maxHiddenCount}줄 더
+                    {labels.month.moreRows(maxHiddenCount)}
                     </div>
                 )}
                 </div>

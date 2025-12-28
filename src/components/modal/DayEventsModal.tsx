@@ -3,6 +3,7 @@
 import ModalShell from './ModalShell';
 import type { CalendarEvent } from '@/data/mock.events';
 import type { CalendarItem } from '@/data/mock.calendars';
+import type { Labels } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
@@ -11,6 +12,7 @@ type Props = {
   calendars: CalendarItem[];
   onClickEvent: (event: CalendarEvent) => void;
   onClose: () => void;
+  labels: Labels;
 };
 
 export default function DayEventsModal({
@@ -20,12 +22,18 @@ export default function DayEventsModal({
   calendars,
   onClickEvent,
   onClose,
+  labels,
 }: Props) {
   const colorById = new Map(calendars.map((c) => [c.id, c.color] as const));
   const nameById = new Map(calendars.map((c) => [c.id, c.name] as const));
 
   return (
-    <ModalShell open={open} title={dateKey ? `${dateKey} 이벤트` : '이벤트'} onClose={onClose}>
+    <ModalShell
+      open={open}
+      title={labels.modals.dayEventsTitle(dateKey)}
+      onClose={onClose}
+      closeLabel={labels.modals.close}
+    >
       <div className="space-y-2">
         {events.map((e) => (
           <button
@@ -43,7 +51,9 @@ export default function DayEventsModal({
             </div>
           </button>
         ))}
-        {events.length === 0 && <div className="text-sm text-white/60">이 날의 이벤트가 없어요.</div>}
+        {events.length === 0 && (
+          <div className="text-sm text-white/60">{labels.modals.dayEventsEmpty}</div>
+        )}
       </div>
     </ModalShell>
   );
