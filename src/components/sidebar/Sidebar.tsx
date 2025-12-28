@@ -1,8 +1,13 @@
-import { MOCK_CALENDARS } from '@/data/mock.calendars';
 import CalendarGroup from './CalendarGroup';
+import type { CalendarItem } from '@/data/mock.calendars';
 
-export default function Sidebar() {
-  const groups = Array.from(new Set(MOCK_CALENDARS.map((c) => c.source)));
+type Props = {
+  calendars: CalendarItem[];
+  onToggleCalendar: (id: string) => void;
+};
+
+export default function Sidebar({ calendars, onToggleCalendar }: Props) {
+  const groups = Array.from(new Set(calendars.map((c) => c.source)));
 
   return (
     <div className="flex h-full flex-col">
@@ -13,7 +18,12 @@ export default function Sidebar() {
 
       <div className="min-h-0 flex-1 overflow-auto py-3">
         {groups.map((g) => (
-          <CalendarGroup key={g} title={g as any} items={MOCK_CALENDARS.filter((c) => c.source === g)} />
+          <CalendarGroup
+            key={g}
+            title={g as any}
+            items={calendars.filter((c) => c.source === g)}
+            onToggle={onToggleCalendar}
+          />
         ))}
       </div>
 

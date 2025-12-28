@@ -7,6 +7,9 @@ type Props = {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
+
+  searchQuery: string;
+  onChangeSearch: (v: string) => void;
 };
 
 export default function CalendarHeader({
@@ -14,6 +17,8 @@ export default function CalendarHeader({
   onPrevMonth,
   onNextMonth,
   onToday,
+  searchQuery,
+  onChangeSearch,
 }: Props) {
   return (
     <div className="flex items-center justify-between border-b border-[rgb(var(--border))] px-4 py-3">
@@ -25,8 +30,9 @@ export default function CalendarHeader({
 
       <div className="flex items-center gap-3">
         <ViewSwitcher />
-        <SearchBox />
+        <SearchBox value={searchQuery} onChange={onChangeSearch} />
       </div>
     </div>
   );
 }
+

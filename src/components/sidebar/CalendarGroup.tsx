@@ -1,14 +1,13 @@
-"use client";
-
 import CalendarToggleItem from './CalendarToggleItem';
 import type { CalendarItem, CalendarSource } from '@/data/mock.calendars';
 
 type Props = {
   title: CalendarSource;
   items: CalendarItem[];
+  onToggle: (id: string) => void;
 };
 
-export default function CalendarGroup({ title, items }: Props) {
+export default function CalendarGroup({ title, items, onToggle }: Props) {
   return (
     <section className="mb-4">
       <div className="px-3 pb-2 text-xs font-semibold tracking-wide text-white/45">
@@ -21,10 +20,7 @@ export default function CalendarGroup({ title, items }: Props) {
             name={it.name}
             color={it.color}
             checked={it.checked}
-            onToggle={() => {
-              // Phase 0에서는 상태관리 아직 안 붙임(UI만)
-              console.log('toggle calendar:', it.id);
-            }}
+            onToggle={() => onToggle(it.id)}
           />
         ))}
       </div>
