@@ -1,7 +1,21 @@
 import Sidebar from '@/components/sidebar/Sidebar';
 import CalendarHeader from '@/components/header/CalendarHeader';
 
-export default function CalendarLayout({ children }: { children: React.ReactNode }) {
+type Props = {
+  title: string;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
+  children: React.ReactNode;
+};
+
+export default function CalendarLayout({
+  title,
+  onPrevMonth,
+  onNextMonth,
+  onToday,
+  children,
+}: Props) {
   return (
     <div className="h-screen w-screen overflow-hidden">
       <div className="flex h-full">
@@ -10,7 +24,12 @@ export default function CalendarLayout({ children }: { children: React.ReactNode
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col bg-[rgb(var(--panel-2))]">
-          <CalendarHeader />
+          <CalendarHeader
+            title={title}
+            onPrevMonth={onPrevMonth}
+            onNextMonth={onNextMonth}
+            onToday={onToday}
+          />
           <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
         </main>
       </div>
