@@ -5,6 +5,7 @@ import { getMonthGrid } from '@/lib/date/monthGrid';
 import type { CalendarEvent } from '@/data/mock.events';
 import type { CalendarItem } from '@/data/mock.calendars';
 import { parseYmd, clampDate, toYmd } from '@/lib/date/ymd';
+import { filterVisibleEvents, isMultiDayEvent } from '@/lib/events/filters';
 
 type Props = {
   year: number;
@@ -12,6 +13,9 @@ type Props = {
   events: CalendarEvent[];
   calendars: CalendarItem[];
   searchQuery: string;
+  onClickDate: (dateKey: string) => void;
+  onClickEvent: (eventId: string) => void;
+  onClickMore: (dateKey: string, events: CalendarEvent[]) => void;
 };
 
 type Segment = {
@@ -25,19 +29,14 @@ const BAR_H = 18;  // EventItem h-[18px]
 const BAR_GAP = 2; // lane 간격
 const MAX_LANES = 3;
 
-export default function MonthGrid({ year, month, events, calendars, searchQuery }: Props) {
+export default function MonthGrid({ year, month, events, calendars, searchQuery, onClickDate, onClickEvent, onClickMore }: Props) {
   const days = getMonthGrid(year, month); // length 42
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
 
   const enabledCalendarIds = new Set(calendars.filter((c) => c.checked).map((c) => c.id));
   const colorByCalendarId = new Map(calendars.map((c) => [c.id, c.color] as const));
-  const q = searchQuery.trim().toLowerCase();
-
-  // 멀티데이 이벤트만 뽑기 (+ 캘린더 필터 + 검색 필터)
-  const multi = events
-    .filter((e) => e.endDate && e.endDate !== e.startDate)
-    .filter((e) => enabledCalendarIds.has(e.calendarId))
-    .filter((e) => (q ? e.title.toLowerCase().includes(q) : true));
+  const visibleEvents = filterVisibleEvents(events, enabledCalendarIds, searchQuery);
+  const multi = visibleEvents.filter(isMultiDayEvent);
 
   // month grid 전체 범위(첫칸~마지막칸)
   const gridStart = weeks[0][0].date;
@@ -102,8 +101,6 @@ export default function MonthGrid({ year, month, events, calendars, searchQuery 
     if (!placed) lanes.push([seg]);
   }
 
-  const MAX_LANES = 3; // macOS처럼 적당히만 보여주고 나머진 +N 처리(추후 개선)
-
   return (
     <div className="rounded-xl overflow-hidden border border-white/10">
       <WeekdayRow />
@@ -128,10 +125,12 @@ export default function MonthGrid({ year, month, events, calendars, searchQuery 
                   <DayCell
                     key={`${w}-${idx}`}
                     day={d}
-                    events={events}
-                    calendars={calendars}
-                    searchQuery={searchQuery}
+                    events={visibleEvents}
+                    colorByCalendarId={colorByCalendarId}
                     reservedTopPx={reservedTopPx}
+                    onClickDate={onClickDate}
+                    onClickEvent={onClickEvent}
+                    onClickMore={onClickMore}
                     />
                 ))}
               </div>
@@ -159,7 +158,10 @@ export default function MonthGrid({ year, month, events, calendars, searchQuery 
                             <EventItem
                             title={seg.event.title}
                             color={colorByCalendarId.get(seg.event.calendarId) ?? '#999999'}
-                            onClick={() => console.log('open event:', seg.event.id)}
+                            onClick={(ev) => {
+                              ev?.stopPropagation?.();
+                              onClickEvent(seg.event.id);
+                            }}
                             />
                         </div>
                         );

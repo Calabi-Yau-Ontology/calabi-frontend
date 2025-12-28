@@ -3,7 +3,7 @@ import { cn } from '@/lib/ui/cn';
 type Props = {
   title: string;
   color: string; // hex like "#ff2d55"
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
 // hex -> rgba

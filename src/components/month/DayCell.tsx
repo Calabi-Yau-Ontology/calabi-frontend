@@ -1,31 +1,26 @@
 import { cn } from '@/lib/ui/cn';
 import type { DayCellData } from '@/lib/date/monthGrid';
 import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
 import { toDateKey } from '@/lib/date/dateKey';
 import EventItem from './EventItem';
+import { isMultiDayEvent } from '@/lib/events/filters';
 
 type Props = {
   day: DayCellData;
   events: CalendarEvent[];
-  calendars: CalendarItem[];
-  searchQuery: string;
+  colorByCalendarId: Map<string, string>;
   reservedTopPx?: number;
+  onClickDate: (dateKey: string) => void;
+  onClickEvent: (eventId: string) => void;
+  onClickMore: (dateKey: string, events: CalendarEvent[]) => void;
 };
 
-export default function DayCell({ day, events, calendars, searchQuery, reservedTopPx }: Props) {
+export default function DayCell({ day, events, colorByCalendarId, reservedTopPx, onClickDate, onClickEvent, onClickMore }: Props) {
   const key = toDateKey(day.date);
-
-  const enabledCalendarIds = new Set(calendars.filter((c) => c.checked).map((c) => c.id));
-  const colorByCalendarId = new Map(calendars.map((c) => [c.id, c.color] as const));
-
-  const q = searchQuery.trim().toLowerCase();
 
   const dayEvents = events
     .filter((e) => e.startDate === key)
-    .filter((e) => !e.endDate || e.endDate === e.startDate)
-    .filter((e) => enabledCalendarIds.has(e.calendarId))
-    .filter((e) => (q ? e.title.toLowerCase().includes(q) : true));
+    .filter((e) => !isMultiDayEvent(e));
 
   const MAX = 3;
   const visible = dayEvents.slice(0, MAX);
@@ -36,9 +31,15 @@ export default function DayCell({ day, events, calendars, searchQuery, reservedT
     <div
       className={cn(
         'relative h-28 border-r border-b border-white/10 px-2 py-1',
-        'overflow-hidden',               // 다른 cell 침범 방지
+        'overflow-hidden',
         !day.isCurrentMonth && 'bg-white/2'
       )}
+      onClick={() => onClickDate(key)}   // ✅ 여기 (DayCell 최상단 div)
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClickDate(key);
+      }}
     >
       <div
         className={cn(
@@ -63,14 +64,21 @@ export default function DayCell({ day, events, calendars, searchQuery, reservedT
             key={e.id}
             title={e.title}
             color={colorByCalendarId.get(e.calendarId) ?? '#999999'}
-            onClick={() => console.log('open event:', e.id)}
+            onClick={(ev) => {
+                ev?.stopPropagation?.();
+                onClickEvent(e.id);
+            }}
             />
         ))}
 
         {remaining > 0 && (
-            <div className="text-[10px] leading-4 text-white/55 text-center">
-            +{remaining}개 더
-            </div>
+            <button
+                type="button"
+                className="text-[10px] leading-4 text-white/55 text-center hover:text-white/75"
+                onClick={(ev) => { ev.stopPropagation(); onClickMore(key, dayEvents); }}
+                >
+                +{remaining}개 더
+            </button>
         )}
         </div>
     </div>
