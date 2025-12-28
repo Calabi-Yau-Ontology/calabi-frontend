@@ -1,5 +1,6 @@
 import Image from "next/image";
 import CalendarLayout from '@/components/layout/CalendarLayout';
+import MonthGrid from '@/components/month/MonthGrid';
 
 // export default function Home() {
 //   return (
@@ -65,18 +66,25 @@ import CalendarLayout from '@/components/layout/CalendarLayout';
 //   );
 // }
 
+// export default function HomePage() {
+//   return (
+//     <CalendarLayout>
+//       <div className="rounded-xl border border-white/10 bg-white/3 p-6">
+//         <div className="text-sm text-white/60">Phase 0 완료</div>
+//         <div className="mt-1 text-lg font-semibold text-white/85">
+//           레이아웃(사이드바 + 헤더 + 메인)이 뜨면 OK
+//         </div>
+//         <div className="mt-3 text-sm text-white/50">
+//           다음 단계(Phase 1~2)에서 Month Grid 렌더링을 붙입니다.
+//         </div>
+//       </div>
+//     </CalendarLayout>
+//   );
+// }
 export default function HomePage() {
   return (
     <CalendarLayout>
-      <div className="rounded-xl border border-white/10 bg-white/3 p-6">
-        <div className="text-sm text-white/60">Phase 0 완료</div>
-        <div className="mt-1 text-lg font-semibold text-white/85">
-          레이아웃(사이드바 + 헤더 + 메인)이 뜨면 OK
-        </div>
-        <div className="mt-3 text-sm text-white/50">
-          다음 단계(Phase 1~2)에서 Month Grid 렌더링을 붙입니다.
-        </div>
-      </div>
+      <MonthGrid year={2025} month={11} /> {/* 12월 */}
     </CalendarLayout>
   );
 }
