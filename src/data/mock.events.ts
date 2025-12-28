@@ -3,8 +3,11 @@ export type CalendarEvent = {
   calendarId: string;
   title: string;
   startDate: string; // YYYY-MM-DD
-  endDate?: string;  // (멀티데이 확장용, 지금은 optional)
+  endDate?: string;  // YYYY-MM-DD
+  description?: string;
+  allDay?: boolean;
 };
+
 
 export const MOCK_EVENTS: CalendarEvent[] = [
   { id: 'e1', calendarId: 'mac-default', title: '팀 미팅', startDate: '2025-12-03', endDate: '2025-12-05' },

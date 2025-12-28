@@ -13,9 +13,25 @@ type Props = {
   onClickDate: (dateKey: string) => void;
   onClickEvent: (eventId: string) => void;
   onClickMore: (dateKey: string, events: CalendarEvent[]) => void;
+  onDragStart: (dateKey: string) => void;
+  onDragEnter: (dateKey: string) => void;
+  suppressClick: boolean;
+  isDragging: boolean;
 };
 
-export default function DayCell({ day, events, colorByCalendarId, reservedTopPx, onClickDate, onClickEvent, onClickMore }: Props) {
+export default function DayCell({
+  day,
+  events,
+  colorByCalendarId,
+  reservedTopPx,
+  onClickDate,
+  onClickEvent,
+  onClickMore,
+  onDragStart,
+  onDragEnter,
+  suppressClick,
+  isDragging,
+}: Props) {
   const key = toDateKey(day.date);
 
   const dayEvents = events
@@ -34,11 +50,24 @@ export default function DayCell({ day, events, colorByCalendarId, reservedTopPx,
         'overflow-hidden',
         !day.isCurrentMonth && 'bg-white/2'
       )}
-      onClick={() => onClickDate(key)}   // ✅ 여기 (DayCell 최상단 div)
+      onClick={() => {
+        if (suppressClick || isDragging) return;
+        onClickDate(key);
+      }}   // ✅ 여기 (DayCell 최상단 div)
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onClickDate(key);
+      }}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        if ((e.target as HTMLElement).closest('button')) return;
+        e.preventDefault();
+        onDragStart(key);
+      }}
+      onMouseEnter={() => {
+        if (!isDragging) return;
+        onDragEnter(key);
       }}
     >
       <div
@@ -56,7 +85,7 @@ export default function DayCell({ day, events, colorByCalendarId, reservedTopPx,
 
         {/* 이벤트 영역 */}
         <div
-        className="flex flex-col gap-[2px] overflow-hidden"
+        className="flex flex-col gap-[2px] overflow-hidden -mx-2"
         style={{ marginTop: 4 + topPad }}
         >
         {visible.map((e) => (

@@ -1,5 +1,6 @@
 export type CalendarSource = '나의 Mac' | 'iCloud' | 'Google' | '기타';
 
+
 export type CalendarItem = {
   id: string;
   source: CalendarSource;
