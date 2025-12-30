@@ -22,7 +22,7 @@ export type ApiFetchOptions = RequestInit & {
   query?: Record<string, QueryValue>;
 };
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api';
 
 const buildUrl = (path: string, query?: Record<string, QueryValue>) => {
@@ -63,7 +63,11 @@ export async function apiFetch<T>(
     finalHeaders.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(url, { ...init, headers: finalHeaders });
+  const response = await fetch(url, {
+    ...init,
+    headers: finalHeaders,
+    credentials: init.credentials ?? 'omit',
+  });
 
   if (response.status === 204) {
     if (!response.ok) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import CalendarLayout from '@/components/layout/CalendarLayout';
 import MonthGrid from '@/components/month/MonthGrid';
 import EventModal from '@/components/modal/EventModal';
@@ -11,13 +12,17 @@ import { addMonths, formatYearMonth, getTodayYearMonth } from '@/lib/date/monthN
 import { MOCK_CALENDARS, type CalendarItem } from '@/data/mock.calendars';
 import { MOCK_EVENTS, type CalendarEvent } from '@/data/mock.events';
 import { getLabels, type Language } from '@/lib/i18n';
+import { fetchMe } from '@/lib/auth/api';
+import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/storage';
 
 export default function HomePage() {
+  const router = useRouter();
   const [ym, setYm] = useState(() => getTodayYearMonth());
   const [calendars, setCalendars] = useState(() => MOCK_CALENDARS);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [language, setLanguage] = useState<Language>('ko');
+  const [authReady, setAuthReady] = useState(false);
 
   // 모달 상태
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -124,6 +129,33 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    let active = true;
+    const token = getAuthToken();
+    if (!token) {
+      router.replace('/login');
+      return () => {
+        active = false;
+      };
+    }
+
+    fetchMe(token)
+      .then((user) => {
+        if (!active) return;
+        setAuthSession(token, user);
+        setAuthReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        clearAuthSession();
+        router.replace('/login');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
     if (saved === 'light' || saved === 'dark') setTheme(saved);
   }, []);
@@ -144,6 +176,14 @@ export default function HomePage() {
     document.documentElement.lang = dateInputLang;
     localStorage.setItem('calabi-lang', language);
   }, [dateInputLang, language]);
+
+  if (!authReady) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[rgb(var(--bg))] text-sm text-white/70">
+        로그인 확인 중...
+      </div>
+    );
+  }
 
   return (
     <CalendarLayout
