@@ -10,10 +10,11 @@ import CalendarModal from '@/components/modal/CalendarModal';
 
 import { addMonths, formatYearMonth, getTodayYearMonth } from '@/lib/date/monthNav';
 import { MOCK_CALENDARS, type CalendarItem } from '@/data/mock.calendars';
-import { MOCK_EVENTS, type CalendarEvent } from '@/data/mock.events';
+import { type CalendarEvent } from '@/data/mock.events';
 import { getLabels, type Language } from '@/lib/i18n';
 import { fetchMe } from '@/lib/auth/api';
 import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/storage';
+import { createEvent, deleteEvent, fetchEvents, updateEvent } from '@/lib/events/api';
 
 export default function HomePage() {
   const router = useRouter();
@@ -38,27 +39,43 @@ export default function HomePage() {
   const labels = useMemo(() => getLabels(language), [language]);
   const title = useMemo(() => formatYearMonth(ym, language), [ym, language]);
   const dateInputLang = language === 'en' ? 'en-US' : 'ko-KR';
-  const [events, setEvents] = useState<CalendarEvent[]>(() => MOCK_EVENTS);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tempClearToken, setTempClearToken] = useState(0);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [calendarModalMode, setCalendarModalMode] = useState<'create' | 'edit'>('create');
   const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
 
   // create
-  const onCreate = (draft: Omit<CalendarEvent, 'id'>) => {
-    const id = `e_${Date.now()}`;
-    setEvents((prev) => [{ id, ...draft }, ...prev]);
-    setTempClearToken((prev) => prev + 1);
+  const onCreate = async (draft: Omit<CalendarEvent, 'id'>) => {
+    try {
+      const created = await createEvent(draft);
+      setEvents((prev) => [created, ...prev]);
+      setTempClearToken((prev) => prev + 1);
+    } catch (error) {
+      console.error('Failed to create event', error);
+    }
   };
 
   // update
-  const onUpdate = (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const onUpdate = async (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
+    try {
+      const existing = events.find((e) => e.id === id);
+      const calendarId = patch.calendarId ?? existing?.calendarId ?? 'mac-default';
+      const updated = await updateEvent(id, patch, calendarId);
+      setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    } catch (error) {
+      console.error('Failed to update event', error);
+    }
   };
 
   // delete
-  const onDelete = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+  const onDelete = async (id: string) => {
+    try {
+      await deleteEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+    } catch (error) {
+      console.error('Failed to delete event', error);
+    }
   };
 
   const onToggleCalendar = (id: string) => {
@@ -154,6 +171,23 @@ export default function HomePage() {
       active = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    let active = true;
+    fetchEvents()
+      .then((items) => {
+        if (!active) return;
+        setEvents(items);
+      })
+      .catch((error) => {
+        console.error('Failed to load events', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady]);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
