@@ -20,6 +20,7 @@ type Props = {
   onChangeTheme: (next: 'dark' | 'light') => void;
   language: Language;
   onChangeLanguage: (next: Language) => void;
+  onLogout: () => void;
   labels: Labels;
 
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export default function CalendarLayout({
   searchQuery, onChangeSearch,
   theme, onChangeTheme,
   language, onChangeLanguage,
+  onLogout,
   labels,
   children,
 }: Props) {
@@ -47,6 +49,7 @@ export default function CalendarLayout({
             onChangeTheme={onChangeTheme}
             language={language}
             onChangeLanguage={onChangeLanguage}
+            onLogout={onLogout}
             labels={labels}
           />
         </aside>

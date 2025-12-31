@@ -108,6 +108,11 @@ export default function HomePage() {
     setEvents((prev) => prev.filter((e) => e.calendarId !== id));
   };
 
+  const onLogout = () => {
+    clearAuthSession();
+    router.replace('/home');
+  };
+
   // MonthGrid로 내려줄 핸들러들
   const onClickDate = (dateKey: string) => {
     setEventModalMode('create');
@@ -235,6 +240,7 @@ export default function HomePage() {
       onChangeTheme={setTheme}
       language={language}
       onChangeLanguage={setLanguage}
+      onLogout={onLogout}
       labels={labels}
     >
       <MonthGrid
