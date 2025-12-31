@@ -11,6 +11,7 @@ export type Labels = {
     language: string;
     languageKo: string;
     languageEn: string;
+    logout: string;
   };
   header: {
     today: string;
@@ -78,6 +79,7 @@ const labels: Record<Language, Labels> = {
       language: '언어',
       languageKo: '한국어',
       languageEn: 'English',
+      logout: '로그아웃',
     },
     header: {
       today: '오늘',
@@ -143,6 +145,7 @@ const labels: Record<Language, Labels> = {
       language: 'Language',
       languageKo: 'Korean',
       languageEn: 'English',
+      logout: 'Log out',
     },
     header: {
       today: 'Today',

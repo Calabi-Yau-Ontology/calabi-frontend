@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import CalendarLayout from '@/components/layout/CalendarLayout';
 import MonthGrid from '@/components/month/MonthGrid';
 import EventModal from '@/components/modal/EventModal';
@@ -9,15 +10,20 @@ import CalendarModal from '@/components/modal/CalendarModal';
 
 import { addMonths, formatYearMonth, getTodayYearMonth } from '@/lib/date/monthNav';
 import { MOCK_CALENDARS, type CalendarItem } from '@/data/mock.calendars';
-import { MOCK_EVENTS, type CalendarEvent } from '@/data/mock.events';
+import { type CalendarEvent } from '@/data/mock.events';
 import { getLabels, type Language } from '@/lib/i18n';
+import { fetchMe } from '@/lib/auth/api';
+import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/storage';
+import { createEvent, deleteEvent, fetchEvents, updateEvent } from '@/lib/events/api';
 
 export default function HomePage() {
+  const router = useRouter();
   const [ym, setYm] = useState(() => getTodayYearMonth());
   const [calendars, setCalendars] = useState(() => MOCK_CALENDARS);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [language, setLanguage] = useState<Language>('ko');
+  const [authReady, setAuthReady] = useState(false);
 
   // 모달 상태
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -33,27 +39,43 @@ export default function HomePage() {
   const labels = useMemo(() => getLabels(language), [language]);
   const title = useMemo(() => formatYearMonth(ym, language), [ym, language]);
   const dateInputLang = language === 'en' ? 'en-US' : 'ko-KR';
-  const [events, setEvents] = useState<CalendarEvent[]>(() => MOCK_EVENTS);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tempClearToken, setTempClearToken] = useState(0);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [calendarModalMode, setCalendarModalMode] = useState<'create' | 'edit'>('create');
   const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
 
   // create
-  const onCreate = (draft: Omit<CalendarEvent, 'id'>) => {
-    const id = `e_${Date.now()}`;
-    setEvents((prev) => [{ id, ...draft }, ...prev]);
-    setTempClearToken((prev) => prev + 1);
+  const onCreate = async (draft: Omit<CalendarEvent, 'id'>) => {
+    try {
+      const created = await createEvent(draft);
+      setEvents((prev) => [created, ...prev]);
+      setTempClearToken((prev) => prev + 1);
+    } catch (error) {
+      console.error('Failed to create event', error);
+    }
   };
 
   // update
-  const onUpdate = (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const onUpdate = async (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
+    try {
+      const existing = events.find((e) => e.id === id);
+      const calendarId = patch.calendarId ?? existing?.calendarId ?? 'mac-default';
+      const updated = await updateEvent(id, patch, calendarId);
+      setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    } catch (error) {
+      console.error('Failed to update event', error);
+    }
   };
 
   // delete
-  const onDelete = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+  const onDelete = async (id: string) => {
+    try {
+      await deleteEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+    } catch (error) {
+      console.error('Failed to delete event', error);
+    }
   };
 
   const onToggleCalendar = (id: string) => {
@@ -84,6 +106,11 @@ export default function HomePage() {
   const onDeleteCalendar = (id: string) => {
     setCalendars((prev) => prev.filter((c) => c.id !== id));
     setEvents((prev) => prev.filter((e) => e.calendarId !== id));
+  };
+
+  const onLogout = () => {
+    clearAuthSession();
+    router.replace('/home');
   };
 
   // MonthGrid로 내려줄 핸들러들
@@ -124,6 +151,50 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    let active = true;
+    const token = getAuthToken();
+    if (!token) {
+      router.replace('/login');
+      return () => {
+        active = false;
+      };
+    }
+
+    fetchMe(token)
+      .then((user) => {
+        if (!active) return;
+        setAuthSession(token, user);
+        setAuthReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        clearAuthSession();
+        router.replace('/login');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    let active = true;
+    fetchEvents()
+      .then((items) => {
+        if (!active) return;
+        setEvents(items);
+      })
+      .catch((error) => {
+        console.error('Failed to load events', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady]);
+
+  useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
     if (saved === 'light' || saved === 'dark') setTheme(saved);
   }, []);
@@ -145,6 +216,14 @@ export default function HomePage() {
     localStorage.setItem('calabi-lang', language);
   }, [dateInputLang, language]);
 
+  if (!authReady) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[rgb(var(--bg))] text-sm text-white/70">
+        로그인 확인 중...
+      </div>
+    );
+  }
+
   return (
     <CalendarLayout
       title={title}
@@ -161,6 +240,7 @@ export default function HomePage() {
       onChangeTheme={setTheme}
       language={language}
       onChangeLanguage={setLanguage}
+      onLogout={onLogout}
       labels={labels}
     >
       <MonthGrid

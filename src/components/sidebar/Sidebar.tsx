@@ -13,6 +13,7 @@ type Props = {
   onChangeTheme: (next: 'dark' | 'light') => void;
   language: Language;
   onChangeLanguage: (next: Language) => void;
+  onLogout: () => void;
   labels: Labels;
 };
 
@@ -25,6 +26,7 @@ export default function Sidebar({
   onChangeTheme,
   language,
   onChangeLanguage,
+  onLogout,
   labels,
 }: Props) {
   return (
@@ -132,6 +134,13 @@ export default function Sidebar({
               </button>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+          >
+            {labels.sidebar.logout}
+          </button>
         </div>
       </div>
 
