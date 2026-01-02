@@ -39,9 +39,14 @@ export default function EventModal({
   labels,
   dateInputLang,
 }: Props) {
+  const getDefaultCalendarId = () =>
+    calendars.find((c) => c.isDefault)?.id ??
+    calendars.find((c) => c.checked)?.id ??
+    calendars[0]?.id ??
+    '';
   const [uiMode, setUiMode] = useState<'view' | 'edit' | 'create'>('view');
   const [draft, setDraft] = useState<EventDraft>({
-    calendarId: calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? '',
+    calendarId: getDefaultCalendarId(),
     title: '',
     startDate: defaultDateKey ?? '',
     endDate: undefined,
@@ -62,7 +67,7 @@ export default function EventModal({
       const nextStart = defaultDateKey ?? '';
       setUiMode('create');
       setDraft({
-        calendarId: calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? '',
+        calendarId: getDefaultCalendarId(),
         title: '',
         startDate: nextStart,
         endDate: normalizedEnd,

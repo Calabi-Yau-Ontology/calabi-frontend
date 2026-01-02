@@ -10,6 +10,7 @@ type BackendEvent = {
   startTime: string;
   endTime?: string | null;
   location?: string | null;
+  calendarId?: string | null;
 };
 
 type EventPayload = {
@@ -18,9 +19,8 @@ type EventPayload = {
   startTime?: string;
   endTime?: string | null;
   location?: string | null;
+  calendarId?: string;
 };
-
-const DEFAULT_CALENDAR_ID = 'mac-default';
 
 const getAuthTokenOrThrow = () => {
   const token = getAuthToken();
@@ -40,6 +40,7 @@ const toPayload = (draft: Omit<CalendarEvent, 'id'>): EventPayload => {
     title: draft.title,
     description: draft.description ?? null,
     startTime: toIsoString(draft.startDate),
+    calendarId: draft.calendarId,
   };
 
   if (draft.endDate) {
@@ -58,20 +59,21 @@ const toUpdatePayload = (patch: Partial<Omit<CalendarEvent, 'id'>>): EventPayloa
   if (patch.endDate !== undefined) {
     payload.endTime = patch.endDate ? toIsoString(patch.endDate) : null;
   }
+  if (patch.calendarId !== undefined) payload.calendarId = patch.calendarId;
 
   return payload;
 };
 
 const toCalendarEvent = (
   event: BackendEvent,
-  calendarId = DEFAULT_CALENDAR_ID
+  calendarId: string
 ): CalendarEvent => {
   const startDate = toYmd(new Date(event.startTime));
   const endDate = event.endTime ? toYmd(new Date(event.endTime)) : undefined;
 
   return {
     id: event.id,
-    calendarId,
+    calendarId: event.calendarId ?? calendarId,
     title: event.title,
     startDate,
     endDate,
@@ -80,10 +82,10 @@ const toCalendarEvent = (
   };
 };
 
-export const fetchEvents = async () => {
+export const fetchEvents = async (fallbackCalendarId: string) => {
   const token = getAuthTokenOrThrow();
   const events = await api.get<BackendEvent[]>('/events', { authToken: token });
-  return events.map((event) => toCalendarEvent(event));
+  return events.map((event) => toCalendarEvent(event, fallbackCalendarId));
 };
 
 export const createEvent = async (draft: Omit<CalendarEvent, 'id'>) => {

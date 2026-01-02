@@ -9,17 +9,19 @@ import DayEventsModal from '@/components/modal/DayEventsModal';
 import CalendarModal from '@/components/modal/CalendarModal';
 
 import { addMonths, formatYearMonth, getTodayYearMonth } from '@/lib/date/monthNav';
-import { MOCK_CALENDARS, type CalendarItem } from '@/data/mock.calendars';
+import { type CalendarItem } from '@/data/mock.calendars';
 import { type CalendarEvent } from '@/data/mock.events';
 import { getLabels, type Language } from '@/lib/i18n';
 import { fetchMe } from '@/lib/auth/api';
 import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/storage';
 import { createEvent, deleteEvent, fetchEvents, updateEvent } from '@/lib/events/api';
+import { createCalendar, deleteCalendar, fetchCalendars, updateCalendar } from '@/lib/calendars/api';
+import { updateUserPreferences } from '@/lib/user/preferences';
 
 export default function HomePage() {
   const router = useRouter();
   const [ym, setYm] = useState(() => getTodayYearMonth());
-  const [calendars, setCalendars] = useState(() => MOCK_CALENDARS);
+  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [language, setLanguage] = useState<Language>('ko');
@@ -60,7 +62,7 @@ export default function HomePage() {
   const onUpdate = async (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
     try {
       const existing = events.find((e) => e.id === id);
-      const calendarId = patch.calendarId ?? existing?.calendarId ?? 'mac-default';
+      const calendarId = patch.calendarId ?? existing?.calendarId ?? getDefaultCalendarId();
       const updated = await updateEvent(id, patch, calendarId);
       setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
     } catch (error) {
@@ -78,8 +80,22 @@ export default function HomePage() {
     }
   };
 
-  const onToggleCalendar = (id: string) => {
-    setCalendars((prev) => prev.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c)));
+  const getDefaultCalendarId = () =>
+    calendars.find((c) => c.isDefault)?.id ??
+    calendars.find((c) => c.checked)?.id ??
+    calendars[0]?.id ??
+    '';
+
+  const onToggleCalendar = async (id: string) => {
+    const target = calendars.find((c) => c.id === id);
+    if (!target) return;
+    const nextChecked = !target.checked;
+    try {
+      const updated = await updateCalendar(id, { checked: nextChecked });
+      setCalendars((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (error) {
+      console.error('Failed to toggle calendar', error);
+    }
   };
 
   const onAddCalendar = () => {
@@ -94,23 +110,55 @@ export default function HomePage() {
     setCalendarModalOpen(true);
   };
 
-  const onCreateCalendar = (draft: Omit<CalendarItem, 'id'>) => {
-    const id = `cal_${Date.now()}`;
-    setCalendars((prev) => [{ id, ...draft }, ...prev]);
+  const onCreateCalendar = async (draft: Omit<CalendarItem, 'id'>) => {
+    try {
+      const created = await createCalendar(draft);
+      setCalendars((prev) => [created, ...prev]);
+    } catch (error) {
+      console.error('Failed to create calendar', error);
+    }
   };
 
-  const onUpdateCalendar = (id: string, patch: Partial<Omit<CalendarItem, 'id'>>) => {
-    setCalendars((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const onUpdateCalendar = async (id: string, patch: Partial<Omit<CalendarItem, 'id'>>) => {
+    try {
+      const updated = await updateCalendar(id, patch);
+      setCalendars((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (error) {
+      console.error('Failed to update calendar', error);
+    }
   };
 
-  const onDeleteCalendar = (id: string) => {
-    setCalendars((prev) => prev.filter((c) => c.id !== id));
-    setEvents((prev) => prev.filter((e) => e.calendarId !== id));
+  const onDeleteCalendar = async (id: string) => {
+    try {
+      await deleteCalendar(id);
+      setCalendars((prev) => prev.filter((c) => c.id !== id));
+      setEvents((prev) => prev.filter((e) => e.calendarId !== id));
+    } catch (error) {
+      console.error('Failed to delete calendar', error);
+    }
   };
 
   const onLogout = () => {
     clearAuthSession();
     router.replace('/home');
+  };
+
+  const onChangeTheme = (next: 'dark' | 'light') => {
+    setTheme(next);
+    if (authReady) {
+      updateUserPreferences({ theme: next, language }).catch((error) => {
+        console.error('Failed to update user preferences', error);
+      });
+    }
+  };
+
+  const onChangeLanguage = (next: Language) => {
+    setLanguage(next);
+    if (authReady) {
+      updateUserPreferences({ theme, language: next }).catch((error) => {
+        console.error('Failed to update user preferences', error);
+      });
+    }
   };
 
   // MonthGrid로 내려줄 핸들러들
@@ -180,7 +228,25 @@ export default function HomePage() {
   useEffect(() => {
     if (!authReady) return;
     let active = true;
-    fetchEvents()
+    fetchCalendars()
+      .then((items) => {
+        if (!active) return;
+        setCalendars(items);
+      })
+      .catch((error) => {
+        console.error('Failed to load calendars', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady]);
+
+  useEffect(() => {
+    if (!authReady || calendars.length === 0) return;
+    let active = true;
+    const fallbackCalendarId = getDefaultCalendarId();
+    fetchEvents(fallbackCalendarId)
       .then((items) => {
         if (!active) return;
         setEvents(items);
@@ -192,7 +258,7 @@ export default function HomePage() {
     return () => {
       active = false;
     };
-  }, [authReady]);
+  }, [authReady, calendars]);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
@@ -237,9 +303,9 @@ export default function HomePage() {
       searchQuery={searchQuery}
       onChangeSearch={setSearchQuery}
       theme={theme}
-      onChangeTheme={setTheme}
+      onChangeTheme={onChangeTheme}
       language={language}
-      onChangeLanguage={setLanguage}
+      onChangeLanguage={onChangeLanguage}
       onLogout={onLogout}
       labels={labels}
     >
