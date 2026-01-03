@@ -1,4 +1,4 @@
-import type { CalendarEvent } from '@/data/mock.events';
+import type { CalendarEvent } from '@/types/event';
 
 export function isMultiDayEvent(event: CalendarEvent) {
   return Boolean(event.endDate && event.endDate !== event.startDate);
@@ -6,12 +6,12 @@ export function isMultiDayEvent(event: CalendarEvent) {
 
 export function filterVisibleEvents(
   events: CalendarEvent[],
-  enabledCalendarIds: Set<string>,
+  enabledCategoryIds: Set<string>,
   searchQuery: string
 ) {
   const q = searchQuery.trim().toLowerCase();
 
   return events
-    .filter((e) => enabledCalendarIds.has(e.calendarId))
+    .filter((e) => enabledCategoryIds.has(e.categoryId))
     .filter((e) => (q ? e.title.toLowerCase().includes(q) : true));
 }

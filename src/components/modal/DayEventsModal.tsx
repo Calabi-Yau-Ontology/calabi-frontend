@@ -1,15 +1,15 @@
 'use client';
 
 import ModalShell from './ModalShell';
-import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CalendarEvent } from '@/types/event';
+import type { CategoryItem } from '@/types/category';
 import type { Labels } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
   dateKey: string | null;
   events: CalendarEvent[];
-  calendars: CalendarItem[];
+  categories: CategoryItem[];
   onClickEvent: (event: CalendarEvent) => void;
   onClose: () => void;
   labels: Labels;
@@ -19,13 +19,13 @@ export default function DayEventsModal({
   open,
   dateKey,
   events,
-  calendars,
+  categories,
   onClickEvent,
   onClose,
   labels,
 }: Props) {
-  const colorById = new Map(calendars.map((c) => [c.id, c.color] as const));
-  const nameById = new Map(calendars.map((c) => [c.id, c.name] as const));
+  const colorById = new Map(categories.map((c) => [c.id, c.color] as const));
+  const nameById = new Map(categories.map((c) => [c.id, c.name] as const));
 
   return (
     <ModalShell
@@ -42,11 +42,11 @@ export default function DayEventsModal({
             className="flex w-full items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
             onClick={() => onClickEvent(e)}
           >
-            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: colorById.get(e.calendarId) ?? '#999' }} />
+            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: colorById.get(e.categoryId) ?? '#999' }} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm text-white/90">{e.title}</div>
               <div className="text-xs text-white/50">
-                {nameById.get(e.calendarId) ?? e.calendarId}
+                {nameById.get(e.categoryId) ?? e.categoryId}
               </div>
             </div>
           </button>

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ModalShell from './ModalShell';
-import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CalendarEvent } from '@/types/event';
+import type { CategoryItem } from '@/types/category';
 import { validateEventDraft, type EventDraft } from '@/lib/validation/eventValidation';
 import type { Labels } from '@/lib/i18n';
 
@@ -13,7 +13,7 @@ type Props = {
   event?: CalendarEvent | null;
   defaultDateKey?: string | null;
   defaultEndDateKey?: string | null;
-  calendars: CalendarItem[];
+  categories: CategoryItem[];
   onClose: () => void;
 
   // ✅ Phase5: 실제 반영을 위해 콜백 추가
@@ -31,7 +31,7 @@ export default function EventModal({
   event,
   defaultDateKey,
   defaultEndDateKey,
-  calendars,
+  categories,
   onClose,
   onCreate,
   onUpdate,
@@ -39,9 +39,14 @@ export default function EventModal({
   labels,
   dateInputLang,
 }: Props) {
+  const getDefaultCategoryId = () =>
+    categories.find((c) => c.isDefault)?.id ??
+    categories.find((c) => c.checked)?.id ??
+    categories[0]?.id ??
+    '';
   const [uiMode, setUiMode] = useState<'view' | 'edit' | 'create'>('view');
   const [draft, setDraft] = useState<EventDraft>({
-    calendarId: calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? '',
+    categoryId: getDefaultCategoryId(),
     title: '',
     startDate: defaultDateKey ?? '',
     endDate: undefined,
@@ -62,7 +67,7 @@ export default function EventModal({
       const nextStart = defaultDateKey ?? '';
       setUiMode('create');
       setDraft({
-        calendarId: calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? '',
+        categoryId: getDefaultCategoryId(),
         title: '',
         startDate: nextStart,
         endDate: normalizedEnd,
@@ -77,7 +82,7 @@ export default function EventModal({
     setUiMode('view');
     if (event) {
       setDraft({
-        calendarId: event.calendarId,
+        categoryId: event.categoryId,
         title: event.title ?? '',
         startDate: event.startDate,
         endDate: event.endDate,
@@ -86,14 +91,14 @@ export default function EventModal({
       });
       setErrors({});
     }
-  }, [open, mode, event, defaultDateKey, defaultEndDateKey, calendars]);
+  }, [open, mode, event, defaultDateKey, defaultEndDateKey, categories]);
 
   const headerTitle = useMemo(() => {
     if (uiMode === 'create') return labels.modals.event.newTitle;
     return labels.modals.event.title;
   }, [uiMode, labels]);
 
-  const calendar = calendars.find((c) => c.id === draft.calendarId);
+  const category = categories.find((c) => c.id === draft.categoryId);
 
   const submit = () => {
     const nextErrors = validateEventDraft(draft, labels.validation);
@@ -102,7 +107,7 @@ export default function EventModal({
 
     // endDate가 startDate와 같으면 굳이 저장 안 해도 됨(선택)
     const normalized: Omit<CalendarEvent, 'id'> = {
-      calendarId: draft.calendarId,
+      categoryId: draft.categoryId,
       title: draft.title.trim(),
       startDate: draft.startDate,
       endDate: draft.endDate?.trim() ? draft.endDate : undefined,
@@ -142,9 +147,9 @@ export default function EventModal({
           <div className="flex items-center gap-2 text-sm text-white/70">
             <span
               className="h-2.5 w-2.5 rounded-sm border border-white/10"
-              style={{ backgroundColor: calendar?.color ?? '#999' }}
+              style={{ backgroundColor: category?.color ?? '#999' }}
             />
-            <span>{calendar?.name ?? event.calendarId}</span>
+            <span>{category?.name ?? event.categoryId}</span>
           </div>
 
           <div className="text-sm text-white/70">
@@ -194,18 +199,18 @@ export default function EventModal({
           <div className="grid gap-2">
             <label className="text-sm text-white/70">{labels.modals.event.categoryLabel}</label>
             <select
-              value={draft.calendarId}
-              onChange={(e) => setDraft((p) => ({ ...p, calendarId: e.target.value }))}
+              value={draft.categoryId}
+              onChange={(e) => setDraft((p) => ({ ...p, categoryId: e.target.value }))}
               className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85 outline-none focus:ring-2 focus:ring-white/10"
             >
-              {calendars.map((c) => (
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
             <div className="min-h-[16px] text-xs text-red-300">
-              {errors.calendarId ?? ''}
+              {errors.categoryId ?? ''}
             </div>
           </div>
 

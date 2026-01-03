@@ -46,7 +46,7 @@ export type Labels = {
         save: string;
         cancel: string;
       };
-    calendar: {
+    category: {
       titleCreate: string;
       titleEdit: string;
       nameLabel: string;
@@ -61,7 +61,7 @@ export type Labels = {
   };
   validation: {
     titleRequired: string;
-    calendarRequired: string;
+    categoryRequired: string;
     startRequired: string;
     endBeforeStart: string;
   };
@@ -114,22 +114,22 @@ const labels: Record<Language, Labels> = {
         save: '저장',
         cancel: '취소',
       },
-      calendar: {
-        titleCreate: '캘린더 추가',
-        titleEdit: '캘린더 편집',
+      category: {
+        titleCreate: '카테고리 추가',
+        titleEdit: '카테고리 편집',
         nameLabel: '이름',
-        namePlaceholder: '캘린더 이름',
+        namePlaceholder: '카테고리 이름',
         colorLabel: '색상',
         defaultVisible: '기본으로 표시',
         save: '저장',
         cancel: '취소',
         delete: '삭제',
-        nameError: '캘린더 이름을 입력하세요.',
+        nameError: '카테고리 이름을 입력하세요.',
       },
     },
     validation: {
       titleRequired: '제목을 입력하세요.',
-      calendarRequired: '캘린더를 선택하세요.',
+      categoryRequired: '카테고리를 선택하세요.',
       startRequired: '시작 날짜를 선택하세요.',
       endBeforeStart: '끝 날짜는 시작 날짜보다 빠를 수 없어요.',
     },
@@ -138,7 +138,7 @@ const labels: Record<Language, Labels> = {
     sidebar: {
       homeAria: 'Go to home',
       categories: 'Categories',
-      addCategoryAria: 'Add calendar',
+      addCategoryAria: 'Add category',
       settings: 'Settings',
       themeLight: 'Light',
       themeDark: 'Dark',
@@ -180,22 +180,22 @@ const labels: Record<Language, Labels> = {
         save: 'Save',
         cancel: 'Cancel',
       },
-      calendar: {
-        titleCreate: 'Add Calendar',
-        titleEdit: 'Edit Calendar',
+      category: {
+        titleCreate: 'Add Category',
+        titleEdit: 'Edit Category',
         nameLabel: 'Name',
-        namePlaceholder: 'Calendar name',
+        namePlaceholder: 'Category name',
         colorLabel: 'Color',
         defaultVisible: 'Show by default',
         save: 'Save',
         cancel: 'Cancel',
         delete: 'Delete',
-        nameError: 'Please enter a calendar name.',
+        nameError: 'Please enter a category name.',
       },
     },
     validation: {
       titleRequired: 'Please enter a title.',
-      calendarRequired: 'Please choose a calendar.',
+      categoryRequired: 'Please choose a category.',
       startRequired: 'Please select a start date.',
       endBeforeStart: 'End date cannot be before the start date.',
     },

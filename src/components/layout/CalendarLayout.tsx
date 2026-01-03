@@ -1,6 +1,6 @@
 import Sidebar from '@/components/sidebar/Sidebar';
 import CalendarHeader from '@/components/header/CalendarHeader';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CategoryItem } from '@/types/category';
 import type { Labels, Language } from '@/lib/i18n';
 
 type Props = {
@@ -9,10 +9,10 @@ type Props = {
   onNextMonth: () => void;
   onToday: () => void;
 
-  calendars: CalendarItem[];
-  onToggleCalendar: (id: string) => void;
-  onAddCalendar: () => void;
-  onEditCalendar: (id: string) => void;
+  categories: CategoryItem[];
+  onToggleCategory: (id: string) => void;
+  onAddCategory: () => void;
+  onEditCategory: (id: string) => void;
 
   searchQuery: string;
   onChangeSearch: (v: string) => void;
@@ -28,7 +28,7 @@ type Props = {
 
 export default function CalendarLayout({
   title, onPrevMonth, onNextMonth, onToday,
-  calendars, onToggleCalendar, onAddCalendar, onEditCalendar,
+  categories, onToggleCategory, onAddCategory, onEditCategory,
   searchQuery, onChangeSearch,
   theme, onChangeTheme,
   language, onChangeLanguage,
@@ -41,10 +41,10 @@ export default function CalendarLayout({
       <div className="flex h-full">
         <aside className="w-[260px] shrink-0 border-r border-[rgb(var(--border))] bg-[rgb(var(--panel))]">
           <Sidebar
-            calendars={calendars}
-            onToggleCalendar={onToggleCalendar}
-            onAddCalendar={onAddCalendar}
-            onEditCalendar={onEditCalendar}
+            categories={categories}
+            onToggleCategory={onToggleCategory}
+            onAddCategory={onAddCategory}
+            onEditCategory={onEditCategory}
             theme={theme}
             onChangeTheme={onChangeTheme}
             language={language}

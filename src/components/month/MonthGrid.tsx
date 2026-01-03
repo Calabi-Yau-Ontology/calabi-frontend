@@ -5,8 +5,8 @@ import WeekdayRow from './WeekdayRow';
 import DayCell from './DayCell';
 import EventItem from './EventItem';
 import { getMonthGrid } from '@/lib/date/monthGrid';
-import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CalendarEvent } from '@/types/event';
+import type { CategoryItem } from '@/types/category';
 import { parseYmd, clampDate, toYmd } from '@/lib/date/ymd';
 import { filterVisibleEvents, isMultiDayEvent } from '@/lib/events/filters';
 import type { Labels } from '@/lib/i18n';
@@ -15,7 +15,7 @@ type Props = {
   year: number;
   month: number; // 0-based
   events: CalendarEvent[];
-  calendars: CalendarItem[];
+  categories: CategoryItem[];
   searchQuery: string;
   onClickDate: (dateKey: string) => void;
   onClickEvent: (eventId: string) => void;
@@ -47,7 +47,7 @@ export default function MonthGrid({
   year,
   month,
   events,
-  calendars,
+  categories,
   searchQuery,
   onClickDate,
   onClickEvent,
@@ -66,11 +66,11 @@ export default function MonthGrid({
   const days = getMonthGrid(year, month); // length 42
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
 
-  const enabledCalendarIds = new Set(calendars.filter((c) => c.checked).map((c) => c.id));
-  const colorByCalendarId = new Map(calendars.map((c) => [c.id, c.color] as const));
+  const enabledCategoryIds = new Set(categories.filter((c) => c.checked).map((c) => c.id));
+  const colorByCategoryId = new Map(categories.map((c) => [c.id, c.color] as const));
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0);
-  const visibleEvents = filterVisibleEvents(events, enabledCalendarIds, searchQuery).filter((e) => {
+  const visibleEvents = filterVisibleEvents(events, enabledCategoryIds, searchQuery).filter((e) => {
     const start = parseYmd(e.startDate);
     const end = e.endDate ? parseYmd(e.endDate) : start;
     return !(end < monthStart || start > monthEnd);
@@ -78,15 +78,15 @@ export default function MonthGrid({
 
   const buildTempEvent = useCallback((startKey: string, endKey: string) => {
     const [startDate, endDate] = startKey <= endKey ? [startKey, endKey] : [endKey, startKey];
-    const calendarId = calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? 'temp';
+    const categoryId = categories.find((c) => c.checked)?.id ?? categories[0]?.id ?? 'temp';
     return {
       id: TEMP_EVENT_ID,
-      calendarId,
+      categoryId,
       title: labels.month.tempEventTitle,
       startDate,
       endDate: startDate === endDate ? undefined : endDate,
     } satisfies CalendarEvent;
-  }, [calendars, labels]);
+  }, [categories, labels]);
 
   const displayEvents = useMemo(() => {
     if (!tempEvent) return visibleEvents;
@@ -252,11 +252,11 @@ export default function MonthGrid({
               {/* 기본 day cell grid */}
               <div className="grid grid-cols-7">
                 {weekDays.map((d, idx) => (
-                  <DayCell
+                    <DayCell
                     key={`${w}-${idx}`}
                     day={d}
                     events={displayEvents}
-                    colorByCalendarId={colorByCalendarId}
+                    colorByCategoryId={colorByCategoryId}
                     reservedTopPx={
                       perDayVisible[idx] > 0 || perDayHidden[idx] > 0
                         ? perDayVisible[idx] * BAR_H +
@@ -319,7 +319,7 @@ export default function MonthGrid({
                         >
                             <EventItem
                             title={seg.event.title}
-                            color={colorByCalendarId.get(seg.event.calendarId) ?? '#999999'}
+                            color={colorByCategoryId.get(seg.event.categoryId) ?? '#999999'}
                             onClick={(ev) => {
                               ev?.stopPropagation?.();
                               if (isTemp) return;

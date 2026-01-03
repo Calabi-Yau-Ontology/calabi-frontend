@@ -1,10 +1,10 @@
-import type { CalendarEvent } from '@/data/mock.events';
+import type { CalendarEvent } from '@/types/event';
 
 export type EventDraft = Omit<CalendarEvent, 'id'> & { id?: string };
 
 type ValidationMessages = {
   titleRequired: string;
-  calendarRequired: string;
+  categoryRequired: string;
   startRequired: string;
   endBeforeStart: string;
 };
@@ -13,7 +13,7 @@ export function validateEventDraft(draft: EventDraft, messages: ValidationMessag
   const errors: Record<string, string> = {};
 
   if (!draft.title?.trim()) errors.title = messages.titleRequired;
-  if (!draft.calendarId) errors.calendarId = messages.calendarRequired;
+  if (!draft.categoryId) errors.categoryId = messages.categoryRequired;
   if (!draft.startDate) errors.startDate = messages.startRequired;
 
   const end = draft.endDate?.trim();

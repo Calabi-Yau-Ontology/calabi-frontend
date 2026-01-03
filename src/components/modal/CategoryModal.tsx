@@ -2,34 +2,34 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ModalShell from './ModalShell';
-import type { CalendarItem, CalendarSource } from '@/data/mock.calendars';
+import type { CategoryItem, CategorySource } from '@/types/category';
 import type { Labels } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
   mode: 'create' | 'edit';
-  calendar?: CalendarItem | null;
+  category?: CategoryItem | null;
   onClose: () => void;
-  onCreate: (draft: Omit<CalendarItem, 'id'>) => void;
-  onUpdate: (id: string, patch: Partial<Omit<CalendarItem, 'id'>>) => void;
+  onCreate: (draft: Omit<CategoryItem, 'id'>) => void;
+  onUpdate: (id: string, patch: Partial<Omit<CategoryItem, 'id'>>) => void;
   onDelete: (id: string) => void;
   labels: Labels;
 };
 
 type Draft = {
   name: string;
-  source: CalendarSource;
+  source: CategorySource;
   color: string;
   checked: boolean;
 };
 
 const DEFAULT_COLOR = '#3b82f6';
-const DEFAULT_SOURCE: CalendarSource = '기타';
+const DEFAULT_SOURCE: CategorySource = '기타';
 
-export default function CalendarModal({
+export default function CategoryModal({
   open,
   mode,
-  calendar,
+  category,
   onClose,
   onCreate,
   onUpdate,
@@ -47,12 +47,12 @@ export default function CalendarModal({
   useEffect(() => {
     if (!open) return;
 
-    if (mode === 'edit' && calendar) {
+    if (mode === 'edit' && category) {
       setDraft({
-        name: calendar.name,
-        source: calendar.source,
-        color: calendar.color,
-        checked: calendar.checked,
+        name: category.name,
+        source: category.source,
+        color: category.color,
+        checked: category.checked,
       });
       setError(null);
       return;
@@ -65,16 +65,16 @@ export default function CalendarModal({
       checked: true,
     });
     setError(null);
-  }, [open, mode, calendar]);
+  }, [open, mode, category]);
 
   const title = useMemo(
-    () => (mode === 'create' ? labels.modals.calendar.titleCreate : labels.modals.calendar.titleEdit),
+    () => (mode === 'create' ? labels.modals.category.titleCreate : labels.modals.category.titleEdit),
     [mode, labels]
   );
 
   const submit = () => {
     if (!draft.name.trim()) {
-      setError(labels.modals.calendar.nameError);
+      setError(labels.modals.category.nameError);
       return;
     }
 
@@ -89,8 +89,8 @@ export default function CalendarModal({
       return;
     }
 
-    if (calendar?.id) {
-      onUpdate(calendar.id, {
+    if (category?.id) {
+      onUpdate(category.id, {
         name: draft.name.trim(),
         source: draft.source,
         color: draft.color,
@@ -101,8 +101,8 @@ export default function CalendarModal({
   };
 
   const remove = () => {
-    if (!calendar?.id) return;
-    onDelete(calendar.id);
+    if (!category?.id) return;
+    onDelete(category.id);
     onClose();
   };
 
@@ -110,18 +110,18 @@ export default function CalendarModal({
     <ModalShell open={open} title={title} onClose={onClose} closeLabel={labels.modals.close}>
       <div className="space-y-3">
         <div className="grid gap-2">
-          <label className="text-sm text-white/70">{labels.modals.calendar.nameLabel}</label>
+          <label className="text-sm text-white/70">{labels.modals.category.nameLabel}</label>
           <input
             value={draft.name}
             onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
             className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85 outline-none focus:ring-2 focus:ring-white/10"
-            placeholder={labels.modals.calendar.namePlaceholder}
+            placeholder={labels.modals.category.namePlaceholder}
           />
           <div className="min-h-[16px] text-xs text-red-300">{error ?? ''}</div>
         </div>
 
         <div className="grid gap-2">
-          <label className="text-sm text-white/70">{labels.modals.calendar.colorLabel}</label>
+          <label className="text-sm text-white/70">{labels.modals.category.colorLabel}</label>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -143,7 +143,7 @@ export default function CalendarModal({
             checked={draft.checked}
             onChange={(e) => setDraft((p) => ({ ...p, checked: e.target.checked }))}
           />
-          {labels.modals.calendar.defaultVisible}
+          {labels.modals.category.defaultVisible}
         </label>
 
         <div className="pt-2 flex gap-2">
@@ -152,24 +152,24 @@ export default function CalendarModal({
             className="flex-1 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
             onClick={submit}
           >
-            {labels.modals.calendar.save}
+            {labels.modals.category.save}
           </button>
           <button
             type="button"
             className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
             onClick={onClose}
           >
-            {labels.modals.calendar.cancel}
+            {labels.modals.category.cancel}
           </button>
         </div>
 
-        {mode === 'edit' && calendar?.id && (
+        {mode === 'edit' && category?.id && (
           <button
             type="button"
             className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
             onClick={remove}
           >
-            {labels.modals.calendar.delete}
+            {labels.modals.category.delete}
           </button>
         )}
       </div>
