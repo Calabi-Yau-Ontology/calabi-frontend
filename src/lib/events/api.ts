@@ -1,7 +1,7 @@
 import { api } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/auth/storage';
 import { parseYmd, toYmd } from '@/lib/date/ymd';
-import type { CalendarEvent } from '@/data/mock.events';
+import type { CalendarEvent } from '@/types/event';
 
 type BackendEvent = {
   id: string;

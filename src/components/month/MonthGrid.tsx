@@ -5,8 +5,8 @@ import WeekdayRow from './WeekdayRow';
 import DayCell from './DayCell';
 import EventItem from './EventItem';
 import { getMonthGrid } from '@/lib/date/monthGrid';
-import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CalendarEvent } from '@/types/event';
+import type { CategoryItem } from '@/types/category';
 import { parseYmd, clampDate, toYmd } from '@/lib/date/ymd';
 import { filterVisibleEvents, isMultiDayEvent } from '@/lib/events/filters';
 import type { Labels } from '@/lib/i18n';
@@ -15,7 +15,7 @@ type Props = {
   year: number;
   month: number; // 0-based
   events: CalendarEvent[];
-  calendars: CalendarItem[];
+  categories: CategoryItem[];
   searchQuery: string;
   onClickDate: (dateKey: string) => void;
   onClickEvent: (eventId: string) => void;
@@ -47,7 +47,7 @@ export default function MonthGrid({
   year,
   month,
   events,
-  calendars,
+  categories,
   searchQuery,
   onClickDate,
   onClickEvent,
@@ -66,8 +66,8 @@ export default function MonthGrid({
   const days = getMonthGrid(year, month); // length 42
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
 
-  const enabledCategoryIds = new Set(calendars.filter((c) => c.checked).map((c) => c.id));
-  const colorByCategoryId = new Map(calendars.map((c) => [c.id, c.color] as const));
+  const enabledCategoryIds = new Set(categories.filter((c) => c.checked).map((c) => c.id));
+  const colorByCategoryId = new Map(categories.map((c) => [c.id, c.color] as const));
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0);
   const visibleEvents = filterVisibleEvents(events, enabledCategoryIds, searchQuery).filter((e) => {
@@ -78,7 +78,7 @@ export default function MonthGrid({
 
   const buildTempEvent = useCallback((startKey: string, endKey: string) => {
     const [startDate, endDate] = startKey <= endKey ? [startKey, endKey] : [endKey, startKey];
-    const categoryId = calendars.find((c) => c.checked)?.id ?? calendars[0]?.id ?? 'temp';
+    const categoryId = categories.find((c) => c.checked)?.id ?? categories[0]?.id ?? 'temp';
     return {
       id: TEMP_EVENT_ID,
       categoryId,
@@ -86,7 +86,7 @@ export default function MonthGrid({
       startDate,
       endDate: startDate === endDate ? undefined : endDate,
     } satisfies CalendarEvent;
-  }, [calendars, labels]);
+  }, [categories, labels]);
 
   const displayEvents = useMemo(() => {
     if (!tempEvent) return visibleEvents;

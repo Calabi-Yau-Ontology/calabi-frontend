@@ -1,14 +1,14 @@
-import type { CalendarItem } from '@/data/mock.calendars';
-import CalendarToggleItem from './CalendarToggleItem';
+import type { CategoryItem } from '@/types/category';
+import CategoryToggleItem from './CategoryToggleItem';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Labels, Language } from '@/lib/i18n';
 
 type Props = {
-  calendars: CalendarItem[];
-  onToggleCalendar: (id: string) => void;
-  onAddCalendar: () => void;
-  onEditCalendar: (id: string) => void;
+  categories: CategoryItem[];
+  onToggleCategory: (id: string) => void;
+  onAddCategory: () => void;
+  onEditCategory: (id: string) => void;
   theme: 'dark' | 'light';
   onChangeTheme: (next: 'dark' | 'light') => void;
   language: Language;
@@ -18,10 +18,10 @@ type Props = {
 };
 
 export default function Sidebar({
-  calendars,
-  onToggleCalendar,
-  onAddCalendar,
-  onEditCalendar,
+  categories,
+  onToggleCategory,
+  onAddCategory,
+  onEditCategory,
   theme,
   onChangeTheme,
   language,
@@ -50,7 +50,7 @@ export default function Sidebar({
             <button
               type="button"
               className="flex h-5 w-5 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-white/70 hover:bg-white/10"
-              onClick={onAddCalendar}
+              onClick={onAddCategory}
               aria-label={labels.sidebar.addCategoryAria}
             >
               +
@@ -58,14 +58,14 @@ export default function Sidebar({
           </div>
         </div>
         <div className="space-y-1 px-2">
-          {calendars.map((it) => (
-            <CalendarToggleItem
+          {categories.map((it) => (
+            <CategoryToggleItem
               key={it.id}
               name={it.name}
               color={it.color}
               checked={it.checked}
-              onToggle={() => onToggleCalendar(it.id)}
-              onEdit={() => onEditCalendar(it.id)}
+              onToggle={() => onToggleCategory(it.id)}
+              onEdit={() => onEditCategory(it.id)}
               editLabel={labels.modals.event.edit}
             />
           ))}

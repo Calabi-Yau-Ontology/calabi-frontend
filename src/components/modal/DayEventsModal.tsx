@@ -1,15 +1,15 @@
 'use client';
 
 import ModalShell from './ModalShell';
-import type { CalendarEvent } from '@/data/mock.events';
-import type { CalendarItem } from '@/data/mock.calendars';
+import type { CalendarEvent } from '@/types/event';
+import type { CategoryItem } from '@/types/category';
 import type { Labels } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
   dateKey: string | null;
   events: CalendarEvent[];
-  calendars: CalendarItem[];
+  categories: CategoryItem[];
   onClickEvent: (event: CalendarEvent) => void;
   onClose: () => void;
   labels: Labels;
@@ -19,13 +19,13 @@ export default function DayEventsModal({
   open,
   dateKey,
   events,
-  calendars,
+  categories,
   onClickEvent,
   onClose,
   labels,
 }: Props) {
-  const colorById = new Map(calendars.map((c) => [c.id, c.color] as const));
-  const nameById = new Map(calendars.map((c) => [c.id, c.name] as const));
+  const colorById = new Map(categories.map((c) => [c.id, c.color] as const));
+  const nameById = new Map(categories.map((c) => [c.id, c.name] as const));
 
   return (
     <ModalShell

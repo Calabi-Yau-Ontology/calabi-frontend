@@ -1,15 +1,15 @@
-import CalendarToggleItem from './CalendarToggleItem';
-import type { CalendarItem, CalendarSource } from '@/data/mock.calendars';
+import CategoryToggleItem from './CategoryToggleItem';
+import type { CategoryItem, CategorySource } from '@/types/category';
 
 type Props = {
-  title: CalendarSource;
-  items: CalendarItem[];
+  title: CategorySource;
+  items: CategoryItem[];
   onToggle: (id: string) => void;
   onEdit: (id: string) => void;
   editLabel: string;
 };
 
-export default function CalendarGroup({ title, items, onToggle, onEdit, editLabel }: Props) {
+export default function CategoryGroup({ title, items, onToggle, onEdit, editLabel }: Props) {
   return (
     <section className="mb-4">
       <div className="px-3 pb-2 text-xs font-semibold tracking-wide text-white/45">
@@ -17,7 +17,7 @@ export default function CalendarGroup({ title, items, onToggle, onEdit, editLabe
       </div>
       <div className="space-y-1 px-2">
         {items.map((it) => (
-          <CalendarToggleItem
+          <CategoryToggleItem
             key={it.id}
             name={it.name}
             color={it.color}

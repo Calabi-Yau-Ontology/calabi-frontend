@@ -6,22 +6,22 @@ import CalendarLayout from '@/components/layout/CalendarLayout';
 import MonthGrid from '@/components/month/MonthGrid';
 import EventModal from '@/components/modal/EventModal';
 import DayEventsModal from '@/components/modal/DayEventsModal';
-import CalendarModal from '@/components/modal/CalendarModal';
+import CategoryModal from '@/components/modal/CategoryModal';
 
 import { addMonths, formatYearMonth, getTodayYearMonth } from '@/lib/date/monthNav';
-import { type CalendarItem } from '@/data/mock.calendars';
-import { type CalendarEvent } from '@/data/mock.events';
+import { type CategoryItem } from '@/types/category';
+import { type CalendarEvent } from '@/types/event';
 import { getLabels, type Language } from '@/lib/i18n';
 import { fetchMe } from '@/lib/auth/api';
 import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/storage';
 import { createEvent, deleteEvent, fetchEvents, updateEvent } from '@/lib/events/api';
-import { createCalendar, deleteCalendar, fetchCalendars, updateCalendar } from '@/lib/calendars/api';
+import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/lib/categories/api';
 import { updateUserPreferences } from '@/lib/user/preferences';
 
 export default function HomePage() {
   const router = useRouter();
   const [ym, setYm] = useState(() => getTodayYearMonth());
-  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [language, setLanguage] = useState<Language>('ko');
@@ -43,9 +43,9 @@ export default function HomePage() {
   const dateInputLang = language === 'en' ? 'en-US' : 'ko-KR';
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tempClearToken, setTempClearToken] = useState(0);
-  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
-  const [calendarModalMode, setCalendarModalMode] = useState<'create' | 'edit'>('create');
-  const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit'>('create');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   // create
   const onCreate = async (draft: Omit<CalendarEvent, 'id'>) => {
@@ -81,60 +81,60 @@ export default function HomePage() {
   };
 
   const getDefaultCategoryId = () =>
-    calendars.find((c) => c.isDefault)?.id ??
-    calendars.find((c) => c.checked)?.id ??
-    calendars[0]?.id ??
+    categories.find((c) => c.isDefault)?.id ??
+    categories.find((c) => c.checked)?.id ??
+    categories[0]?.id ??
     '';
 
-  const onToggleCalendar = async (id: string) => {
-    const target = calendars.find((c) => c.id === id);
+  const onToggleCategory = async (id: string) => {
+    const target = categories.find((c) => c.id === id);
     if (!target) return;
     const nextChecked = !target.checked;
     try {
-      const updated = await updateCalendar(id, { checked: nextChecked });
-      setCalendars((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      const updated = await updateCategory(id, { checked: nextChecked });
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } catch (error) {
-      console.error('Failed to toggle calendar', error);
+      console.error('Failed to toggle category', error);
     }
   };
 
-  const onAddCalendar = () => {
-    setCalendarModalMode('create');
-    setEditingCalendarId(null);
-    setCalendarModalOpen(true);
+  const onAddCategory = () => {
+    setCategoryModalMode('create');
+    setEditingCategoryId(null);
+    setCategoryModalOpen(true);
   };
 
-  const onEditCalendar = (id: string) => {
-    setCalendarModalMode('edit');
-    setEditingCalendarId(id);
-    setCalendarModalOpen(true);
+  const onEditCategory = (id: string) => {
+    setCategoryModalMode('edit');
+    setEditingCategoryId(id);
+    setCategoryModalOpen(true);
   };
 
-  const onCreateCalendar = async (draft: Omit<CalendarItem, 'id'>) => {
+  const onCreateCategory = async (draft: Omit<CategoryItem, 'id'>) => {
     try {
-      const created = await createCalendar(draft);
-      setCalendars((prev) => [created, ...prev]);
+      const created = await createCategory(draft);
+      setCategories((prev) => [created, ...prev]);
     } catch (error) {
-      console.error('Failed to create calendar', error);
+      console.error('Failed to create category', error);
     }
   };
 
-  const onUpdateCalendar = async (id: string, patch: Partial<Omit<CalendarItem, 'id'>>) => {
+  const onUpdateCategory = async (id: string, patch: Partial<Omit<CategoryItem, 'id'>>) => {
     try {
-      const updated = await updateCalendar(id, patch);
-      setCalendars((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      const updated = await updateCategory(id, patch);
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } catch (error) {
-      console.error('Failed to update calendar', error);
+      console.error('Failed to update category', error);
     }
   };
 
-  const onDeleteCalendar = async (id: string) => {
+  const onDeleteCategory = async (id: string) => {
     try {
-      await deleteCalendar(id);
-      setCalendars((prev) => prev.filter((c) => c.id !== id));
+      await deleteCategory(id);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
       setEvents((prev) => prev.filter((e) => e.categoryId !== id));
     } catch (error) {
-      console.error('Failed to delete calendar', error);
+      console.error('Failed to delete category', error);
     }
   };
 
@@ -228,13 +228,13 @@ export default function HomePage() {
   useEffect(() => {
     if (!authReady) return;
     let active = true;
-    fetchCalendars()
+    fetchCategories()
       .then((items) => {
         if (!active) return;
-        setCalendars(items);
+        setCategories(items);
       })
       .catch((error) => {
-        console.error('Failed to load calendars', error);
+        console.error('Failed to load categories', error);
       });
 
     return () => {
@@ -243,7 +243,7 @@ export default function HomePage() {
   }, [authReady]);
 
   useEffect(() => {
-    if (!authReady || calendars.length === 0) return;
+    if (!authReady || categories.length === 0) return;
     let active = true;
     const fallbackCategoryId = getDefaultCategoryId();
     fetchEvents(fallbackCategoryId)
@@ -258,7 +258,7 @@ export default function HomePage() {
     return () => {
       active = false;
     };
-  }, [authReady, calendars]);
+  }, [authReady, categories]);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
@@ -296,10 +296,10 @@ export default function HomePage() {
       onPrevMonth={() => setYm((prev) => addMonths(prev, -1))}
       onNextMonth={() => setYm((prev) => addMonths(prev, 1))}
       onToday={() => setYm(getTodayYearMonth())}
-      calendars={calendars}
-      onToggleCalendar={onToggleCalendar}
-      onAddCalendar={onAddCalendar}
-      onEditCalendar={onEditCalendar}
+      categories={categories}
+      onToggleCategory={onToggleCategory}
+      onAddCategory={onAddCategory}
+      onEditCategory={onEditCategory}
       searchQuery={searchQuery}
       onChangeSearch={setSearchQuery}
       theme={theme}
@@ -313,7 +313,7 @@ export default function HomePage() {
         year={ym.year}
         month={ym.month}
         events={events}
-        calendars={calendars}
+        categories={categories}
         searchQuery={searchQuery}
         onClickDate={onClickDate}   
         onClickEvent={onClickEvent} 
@@ -329,7 +329,7 @@ export default function HomePage() {
         event={selectedEvent}
         defaultDateKey={createDateKey}
         defaultEndDateKey={createEndDateKey}
-        calendars={calendars}
+        categories={categories}
         onClose={() => setEventModalOpen(false)}
         onCreate={onCreate}
         onUpdate={onUpdate}
@@ -338,14 +338,14 @@ export default function HomePage() {
         dateInputLang={dateInputLang}
       />
 
-      <CalendarModal
-        open={calendarModalOpen}
-        mode={calendarModalMode}
-        calendar={editingCalendarId ? calendars.find((c) => c.id === editingCalendarId) : null}
-        onClose={() => setCalendarModalOpen(false)}
-        onCreate={onCreateCalendar}
-        onUpdate={onUpdateCalendar}
-        onDelete={onDeleteCalendar}
+      <CategoryModal
+        open={categoryModalOpen}
+        mode={categoryModalMode}
+        category={editingCategoryId ? categories.find((c) => c.id === editingCategoryId) : null}
+        onClose={() => setCategoryModalOpen(false)}
+        onCreate={onCreateCategory}
+        onUpdate={onUpdateCategory}
+        onDelete={onDeleteCategory}
         labels={labels}
       />
 
@@ -353,7 +353,7 @@ export default function HomePage() {
         open={dayListOpen}
         dateKey={dayListDateKey}
         events={dayListEvents}
-        calendars={calendars}
+        categories={categories}
         onClose={() => setDayListOpen(false)}
         onClickEvent={(e) => {
           setDayListOpen(false);

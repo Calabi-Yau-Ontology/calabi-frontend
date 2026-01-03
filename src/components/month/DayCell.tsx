@@ -1,6 +1,6 @@
 import { cn } from '@/lib/ui/cn';
 import type { DayCellData } from '@/lib/date/monthGrid';
-import type { CalendarEvent } from '@/data/mock.events';
+import type { CalendarEvent } from '@/types/event';
 import { toDateKey } from '@/lib/date/dateKey';
 import EventItem from './EventItem';
 import { isMultiDayEvent } from '@/lib/events/filters';

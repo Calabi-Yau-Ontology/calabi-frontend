@@ -1,4 +1,4 @@
-import type { CalendarEvent } from '@/data/mock.events';
+import type { CalendarEvent } from '@/types/event';
 
 export function isMultiDayEvent(event: CalendarEvent) {
   return Boolean(event.endDate && event.endDate !== event.startDate);

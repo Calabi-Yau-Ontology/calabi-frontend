@@ -11,7 +11,7 @@ type Props = {
   editLabel: string;
 };
 
-export default function CalendarToggleItem({
+export default function CategoryToggleItem({
   name,
   color,
   checked,
