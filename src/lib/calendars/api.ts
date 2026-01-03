@@ -47,13 +47,13 @@ const toPayload = (draft: Partial<Omit<CalendarItem, 'id'>>): CalendarPayload =>
 
 export const fetchCalendars = async () => {
   const token = getAuthTokenOrThrow();
-  const calendars = await api.get<BackendCalendar[]>('/calendars', { authToken: token });
+  const calendars = await api.get<BackendCalendar[]>('/categories', { authToken: token });
   return calendars.map((calendar) => toCalendarItem(calendar));
 };
 
 export const createCalendar = async (draft: Omit<CalendarItem, 'id'>) => {
   const token = getAuthTokenOrThrow();
-  const created = await api.post<BackendCalendar>('/calendars', toPayload(draft), {
+  const created = await api.post<BackendCalendar>('/categories', toPayload(draft), {
     authToken: token,
   });
   return toCalendarItem(created);
@@ -64,7 +64,7 @@ export const updateCalendar = async (
   patch: Partial<Omit<CalendarItem, 'id'>>
 ) => {
   const token = getAuthTokenOrThrow();
-  const updated = await api.patch<BackendCalendar>(`/calendars/${id}`, toPayload(patch), {
+  const updated = await api.patch<BackendCalendar>(`/categories/${id}`, toPayload(patch), {
     authToken: token,
   });
   return toCalendarItem(updated);
@@ -72,6 +72,6 @@ export const updateCalendar = async (
 
 export const deleteCalendar = async (id: string) => {
   const token = getAuthTokenOrThrow();
-  await api.delete<{ deleted: boolean }>(`/calendars/${id}`, { authToken: token });
+  await api.delete<{ deleted: boolean }>(`/categories/${id}`, { authToken: token });
   return id;
 };

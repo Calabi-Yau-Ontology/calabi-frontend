@@ -10,7 +10,7 @@ type BackendEvent = {
   startTime: string;
   endTime?: string | null;
   location?: string | null;
-  calendarId?: string | null;
+  categoryId?: string | null;
 };
 
 type EventPayload = {
@@ -19,7 +19,7 @@ type EventPayload = {
   startTime?: string;
   endTime?: string | null;
   location?: string | null;
-  calendarId?: string;
+  categoryId?: string;
 };
 
 const getAuthTokenOrThrow = () => {
@@ -40,7 +40,7 @@ const toPayload = (draft: Omit<CalendarEvent, 'id'>): EventPayload => {
     title: draft.title,
     description: draft.description ?? null,
     startTime: toIsoString(draft.startDate),
-    calendarId: draft.calendarId,
+    categoryId: draft.calendarId,
   };
 
   if (draft.endDate) {
@@ -59,7 +59,7 @@ const toUpdatePayload = (patch: Partial<Omit<CalendarEvent, 'id'>>): EventPayloa
   if (patch.endDate !== undefined) {
     payload.endTime = patch.endDate ? toIsoString(patch.endDate) : null;
   }
-  if (patch.calendarId !== undefined) payload.calendarId = patch.calendarId;
+  if (patch.calendarId !== undefined) payload.categoryId = patch.calendarId;
 
   return payload;
 };
@@ -73,7 +73,7 @@ const toCalendarEvent = (
 
   return {
     id: event.id,
-    calendarId: event.calendarId ?? calendarId,
+    calendarId: event.categoryId ?? calendarId,
     title: event.title,
     startDate,
     endDate,
