@@ -39,14 +39,14 @@ export default function EventModal({
   labels,
   dateInputLang,
 }: Props) {
-  const getDefaultCalendarId = () =>
+  const getDefaultCategoryId = () =>
     calendars.find((c) => c.isDefault)?.id ??
     calendars.find((c) => c.checked)?.id ??
     calendars[0]?.id ??
     '';
   const [uiMode, setUiMode] = useState<'view' | 'edit' | 'create'>('view');
   const [draft, setDraft] = useState<EventDraft>({
-    calendarId: getDefaultCalendarId(),
+    categoryId: getDefaultCategoryId(),
     title: '',
     startDate: defaultDateKey ?? '',
     endDate: undefined,
@@ -67,7 +67,7 @@ export default function EventModal({
       const nextStart = defaultDateKey ?? '';
       setUiMode('create');
       setDraft({
-        calendarId: getDefaultCalendarId(),
+        categoryId: getDefaultCategoryId(),
         title: '',
         startDate: nextStart,
         endDate: normalizedEnd,
@@ -82,7 +82,7 @@ export default function EventModal({
     setUiMode('view');
     if (event) {
       setDraft({
-        calendarId: event.calendarId,
+        categoryId: event.categoryId,
         title: event.title ?? '',
         startDate: event.startDate,
         endDate: event.endDate,
@@ -98,7 +98,7 @@ export default function EventModal({
     return labels.modals.event.title;
   }, [uiMode, labels]);
 
-  const calendar = calendars.find((c) => c.id === draft.calendarId);
+  const calendar = calendars.find((c) => c.id === draft.categoryId);
 
   const submit = () => {
     const nextErrors = validateEventDraft(draft, labels.validation);
@@ -107,7 +107,7 @@ export default function EventModal({
 
     // endDate가 startDate와 같으면 굳이 저장 안 해도 됨(선택)
     const normalized: Omit<CalendarEvent, 'id'> = {
-      calendarId: draft.calendarId,
+      categoryId: draft.categoryId,
       title: draft.title.trim(),
       startDate: draft.startDate,
       endDate: draft.endDate?.trim() ? draft.endDate : undefined,
@@ -149,7 +149,7 @@ export default function EventModal({
               className="h-2.5 w-2.5 rounded-sm border border-white/10"
               style={{ backgroundColor: calendar?.color ?? '#999' }}
             />
-            <span>{calendar?.name ?? event.calendarId}</span>
+            <span>{calendar?.name ?? event.categoryId}</span>
           </div>
 
           <div className="text-sm text-white/70">
@@ -199,8 +199,8 @@ export default function EventModal({
           <div className="grid gap-2">
             <label className="text-sm text-white/70">{labels.modals.event.categoryLabel}</label>
             <select
-              value={draft.calendarId}
-              onChange={(e) => setDraft((p) => ({ ...p, calendarId: e.target.value }))}
+              value={draft.categoryId}
+              onChange={(e) => setDraft((p) => ({ ...p, categoryId: e.target.value }))}
               className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85 outline-none focus:ring-2 focus:ring-white/10"
             >
               {calendars.map((c) => (
@@ -210,7 +210,7 @@ export default function EventModal({
               ))}
             </select>
             <div className="min-h-[16px] text-xs text-red-300">
-              {errors.calendarId ?? ''}
+              {errors.categoryId ?? ''}
             </div>
           </div>
 

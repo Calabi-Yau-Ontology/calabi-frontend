@@ -62,8 +62,8 @@ export default function HomePage() {
   const onUpdate = async (id: string, patch: Partial<Omit<CalendarEvent, 'id'>>) => {
     try {
       const existing = events.find((e) => e.id === id);
-      const calendarId = patch.calendarId ?? existing?.calendarId ?? getDefaultCalendarId();
-      const updated = await updateEvent(id, patch, calendarId);
+      const categoryId = patch.categoryId ?? existing?.categoryId ?? getDefaultCategoryId();
+      const updated = await updateEvent(id, patch, categoryId);
       setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
     } catch (error) {
       console.error('Failed to update event', error);
@@ -80,7 +80,7 @@ export default function HomePage() {
     }
   };
 
-  const getDefaultCalendarId = () =>
+  const getDefaultCategoryId = () =>
     calendars.find((c) => c.isDefault)?.id ??
     calendars.find((c) => c.checked)?.id ??
     calendars[0]?.id ??
@@ -132,7 +132,7 @@ export default function HomePage() {
     try {
       await deleteCalendar(id);
       setCalendars((prev) => prev.filter((c) => c.id !== id));
-      setEvents((prev) => prev.filter((e) => e.calendarId !== id));
+      setEvents((prev) => prev.filter((e) => e.categoryId !== id));
     } catch (error) {
       console.error('Failed to delete calendar', error);
     }
@@ -245,8 +245,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!authReady || calendars.length === 0) return;
     let active = true;
-    const fallbackCalendarId = getDefaultCalendarId();
-    fetchEvents(fallbackCalendarId)
+    const fallbackCategoryId = getDefaultCategoryId();
+    fetchEvents(fallbackCategoryId)
       .then((items) => {
         if (!active) return;
         setEvents(items);

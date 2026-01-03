@@ -8,7 +8,7 @@ import { isMultiDayEvent } from '@/lib/events/filters';
 type Props = {
   day: DayCellData;
   events: CalendarEvent[];
-  colorByCalendarId: Map<string, string>;
+  colorByCategoryId: Map<string, string>;
   reservedTopPx?: number;
   onClickDate: (dateKey: string) => void;
   onClickEvent: (eventId: string) => void;
@@ -23,7 +23,7 @@ type Props = {
 export default function DayCell({
   day,
   events,
-  colorByCalendarId,
+  colorByCategoryId,
   reservedTopPx,
   onClickDate,
   onClickEvent,
@@ -94,7 +94,7 @@ export default function DayCell({
             <EventItem
             key={e.id}
             title={e.title}
-            color={colorByCalendarId.get(e.calendarId) ?? '#999999'}
+            color={colorByCategoryId.get(e.categoryId) ?? '#999999'}
             onClick={(ev) => {
                 ev?.stopPropagation?.();
                 onClickEvent(e.id);

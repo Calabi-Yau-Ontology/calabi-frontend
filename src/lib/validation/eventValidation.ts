@@ -13,7 +13,7 @@ export function validateEventDraft(draft: EventDraft, messages: ValidationMessag
   const errors: Record<string, string> = {};
 
   if (!draft.title?.trim()) errors.title = messages.titleRequired;
-  if (!draft.calendarId) errors.calendarId = messages.calendarRequired;
+  if (!draft.categoryId) errors.categoryId = messages.calendarRequired;
   if (!draft.startDate) errors.startDate = messages.startRequired;
 
   const end = draft.endDate?.trim();
