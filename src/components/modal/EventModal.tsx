@@ -163,9 +163,10 @@ export default function EventModal({
 
   useEffect(() => {
     if (!open || uiMode !== 'create') return;
-    requestAnimationFrame(() => {
+    const timer = window.setTimeout(() => {
       titleInputRef.current?.focus();
-    });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [open, uiMode]);
 
   useEffect(() => {
