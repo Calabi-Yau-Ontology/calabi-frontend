@@ -40,7 +40,17 @@ type Props = {
   consistencyReady: Record<string, ConsistencyCacheEntry>;
   consistencyPending: Record<string, ConsistencyPendingEntry>;
   onIgnoreConsistency: (eventId: string) => void;
-  onApplyConsistency: (eventId: string, newTitle: string) => void;
+  onDismissConsistency: (eventId: string) => void;
+  onApplyConsistency: (payload: {
+    eventId: string;
+    beforeTitle: string;
+    afterTitle: string;
+    pairs: Array<{
+      canonicalName: string;
+      conceptType: string;
+      appliedSurface: string;
+    }>;
+  }) => void;
 };
 
 type Segment = {
@@ -76,6 +86,7 @@ export default function MonthGrid({
   consistencyReady,
   consistencyPending,
   onIgnoreConsistency,
+  onDismissConsistency,
   onApplyConsistency,
 }: Props) {
   const [dragging, setDragging] = useState(false);
@@ -256,11 +267,11 @@ export default function MonthGrid({
     const eventId = popover?.eventId ?? null;
     const shouldClear = eventId ? clearOnLeaveRef.current.has(eventId) : false;
     hidePopoverTimer.current = window.setTimeout(() => {
-      if (eventId && shouldClear) {
-        clearOnLeaveRef.current.delete(eventId);
-        handleIgnoreConsistency(eventId);
-        return;
-      }
+    if (eventId && shouldClear) {
+      clearOnLeaveRef.current.delete(eventId);
+      handleIgnoreConsistency(eventId);
+      return;
+    }
       setPopover(null);
     }, 120);
   };
@@ -281,7 +292,7 @@ export default function MonthGrid({
     const hasNoResults = Boolean(readyEntry && readyEntry.results.length === 0);
     const actionable = readyEntry ? hasActionableSuggestion(readyEntry) : false;
     if (readyEntry && !actionable && !hasNoResults) {
-      onIgnoreConsistency(eventId);
+      handleIgnoreConsistency(eventId);
       return;
     }
     if (hasNoResults) {
@@ -353,6 +364,17 @@ export default function MonthGrid({
     setPopover(null);
   };
 
+  const handleDismissConsistency = (eventId: string) => {
+    clearOnLeaveRef.current.delete(eventId);
+    onDismissConsistency(eventId);
+    setSelectionByEventId((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    setPopover(null);
+  };
+
   const handleApplyConsistency = (eventId: string) => {
     const entry = consistencyReady[eventId];
     if (!entry) return;
@@ -362,7 +384,31 @@ export default function MonthGrid({
       handleIgnoreConsistency(eventId);
       return;
     }
-    onApplyConsistency(eventId, nextTitle);
+    const pairs = entry.results
+      .map((result, index) => {
+        const appliedSurface = selections[index];
+        if (!appliedSurface) return null;
+        if (!result.canonicalName || !result.conceptType) return null;
+        return {
+          canonicalName: result.canonicalName,
+          conceptType: result.conceptType,
+          appliedSurface,
+        };
+      })
+      .filter(
+        (pair): pair is { canonicalName: string; conceptType: string; appliedSurface: string } =>
+          Boolean(pair)
+      );
+    if (pairs.length === 0) {
+      handleIgnoreConsistency(eventId);
+      return;
+    }
+    onApplyConsistency({
+      eventId,
+      beforeTitle: entry.sourceTitle,
+      afterTitle: nextTitle,
+      pairs,
+    });
     setSelectionByEventId((prev) => {
       const next = { ...prev };
       delete next[eventId];
@@ -430,7 +476,7 @@ export default function MonthGrid({
           className={[
             'rounded-sm px-1',
             'cursor-pointer',
-            isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95',
+            isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95 text-black',
           ].join(' ')}
           onMouseEnter={() => setActiveResultIndex(index)}
         >

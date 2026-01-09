@@ -44,6 +44,26 @@ export type ConsistencyResponse = {
   errors?: ConsistencyError[];
 };
 
+export type ConsistencyDecisionAction = 'applied' | 'ignored';
+
+export type ConsistencyDecisionPair = {
+  canonicalName: string;
+  conceptType: string;
+  appliedSurface: string;
+};
+
+export type ConsistencyDecisionRequest = {
+  eventId: string;
+  action: ConsistencyDecisionAction;
+  beforeTitle?: string;
+  afterTitle?: string;
+  pairs?: ConsistencyDecisionPair[];
+};
+
+export type ConsistencyDecisionResponse = {
+  acknowledged: boolean;
+};
+
 export type ConsistencyCacheEntry = {
   sourceTitle: string;
   createdAt: number;

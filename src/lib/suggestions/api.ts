@@ -2,6 +2,8 @@ import { api } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/auth/storage';
 import type {
   AutocompleteResponse,
+  ConsistencyDecisionRequest,
+  ConsistencyDecisionResponse,
   ConsistencyResponse,
 } from '@/types/suggestions';
 
@@ -29,6 +31,28 @@ export const runConsistencyCheck = async (text: string): Promise<ConsistencyResp
   return api.post<ConsistencyResponse>(
     '/suggestions/consistency-check',
     { text },
+    { authToken: token }
+  );
+};
+
+export const runConsistencyCheckByEvent = async (
+  eventId: string
+): Promise<ConsistencyResponse> => {
+  const token = getAuthTokenOrThrow();
+  return api.post<ConsistencyResponse>(
+    '/suggestions/consistency-check',
+    { eventId },
+    { authToken: token }
+  );
+};
+
+export const sendConsistencyDecision = async (
+  payload: ConsistencyDecisionRequest
+): Promise<ConsistencyDecisionResponse> => {
+  const token = getAuthTokenOrThrow();
+  return api.post<ConsistencyDecisionResponse>(
+    '/suggestions/consistency-decision',
+    payload,
     { authToken: token }
   );
 };
