@@ -6,4 +6,5 @@ export type CalendarEvent = {
   endDate?: string;  // YYYY-MM-DD
   description?: string;
   allDay?: boolean;
+  nerCacheStatus?: 'pending' | 'ready' | 'error' | 'consumed' | null;
 };

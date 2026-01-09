@@ -65,6 +65,18 @@ export type Labels = {
     startRequired: string;
     endBeforeStart: string;
   };
+  suggestions: {
+    analyzing: string;
+    resultsTitle: string;
+    noResults: string;
+    ignore: string;
+    apply: string;
+    mostRecent: string;
+    mostFrequent: string;
+    noSpan: string;
+    autocompleteTitle: string;
+    autocompleteEmpty: string;
+  };
 };
 
 const labels: Record<Language, Labels> = {
@@ -133,6 +145,18 @@ const labels: Record<Language, Labels> = {
       startRequired: '시작 날짜를 선택하세요.',
       endBeforeStart: '끝 날짜는 시작 날짜보다 빠를 수 없어요.',
     },
+    suggestions: {
+      analyzing: '일관성 분석 중입니다.',
+      resultsTitle: '일관성 추천',
+      noResults: '추천 결과가 없어요.',
+      ignore: '무시',
+      apply: '반영 완료',
+      mostRecent: '최근',
+      mostFrequent: '자주',
+      noSpan: '위치 정보 없음',
+      autocompleteTitle: '추천',
+      autocompleteEmpty: '추천 없음',
+    },
   },
   en: {
     sidebar: {
@@ -198,6 +222,18 @@ const labels: Record<Language, Labels> = {
       categoryRequired: 'Please choose a category.',
       startRequired: 'Please select a start date.',
       endBeforeStart: 'End date cannot be before the start date.',
+    },
+    suggestions: {
+      analyzing: 'Consistency check in progress.',
+      resultsTitle: 'Consistency suggestions',
+      noResults: 'No suggestions available.',
+      ignore: 'Ignore',
+      apply: 'Apply',
+      mostRecent: 'Recent',
+      mostFrequent: 'Frequent',
+      noSpan: 'No span data',
+      autocompleteTitle: 'Suggestions',
+      autocompleteEmpty: 'No suggestions',
     },
   },
 };

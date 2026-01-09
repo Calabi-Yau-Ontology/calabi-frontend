@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import WeekdayRow from './WeekdayRow';
 import DayCell from './DayCell';
 import EventItem from './EventItem';
@@ -10,6 +19,11 @@ import type { CategoryItem } from '@/types/category';
 import { parseYmd, clampDate, toYmd } from '@/lib/date/ymd';
 import { filterVisibleEvents, isMultiDayEvent } from '@/lib/events/filters';
 import type { Labels } from '@/lib/i18n';
+import type {
+  ConsistencyCacheEntry,
+  ConsistencyPendingEntry,
+  ConsistencyRecommendation,
+} from '@/types/suggestions';
 
 type Props = {
   year: number;
@@ -23,6 +37,20 @@ type Props = {
   onClickTempRange: (startDateKey: string, endDateKey: string) => void;
   clearTempToken?: number;
   labels: Labels;
+  consistencyReady: Record<string, ConsistencyCacheEntry>;
+  consistencyPending: Record<string, ConsistencyPendingEntry>;
+  onIgnoreConsistency: (eventId: string) => void;
+  onDismissConsistency: (eventId: string) => void;
+  onApplyConsistency: (payload: {
+    eventId: string;
+    beforeTitle: string;
+    afterTitle: string;
+    pairs: Array<{
+      canonicalName: string;
+      conceptType: string;
+      appliedSurface: string;
+    }>;
+  }) => void;
 };
 
 type Segment = {
@@ -55,6 +83,11 @@ export default function MonthGrid({
   onClickTempRange,
   clearTempToken,
   labels,
+  consistencyReady,
+  consistencyPending,
+  onIgnoreConsistency,
+  onDismissConsistency,
+  onApplyConsistency,
 }: Props) {
   const [dragging, setDragging] = useState(false);
   const [dragStartKey, setDragStartKey] = useState<string | null>(null);
@@ -62,6 +95,12 @@ export default function MonthGrid({
   const [tempEvent, setTempEvent] = useState<CalendarEvent | null>(null);
   const [suppressClick, setSuppressClick] = useState(false);
   const [tempPressing, setTempPressing] = useState(false);
+  const [popover, setPopover] = useState<{ eventId: string; rect: DOMRect } | null>(null);
+  const [selectionByEventId, setSelectionByEventId] = useState<Record<string, Record<number, string>>>({});
+  const [activeResultIndex, setActiveResultIndex] = useState<number | null>(null);
+  const hidePopoverTimer = useRef<number | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const clearOnLeaveRef = useRef<Set<string>>(new Set());
 
   const days = getMonthGrid(year, month); // length 42
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
@@ -216,6 +255,262 @@ export default function MonthGrid({
     onClickDate(dateKey);
   };
 
+  const clearHideTimer = () => {
+    if (hidePopoverTimer.current !== null) {
+      window.clearTimeout(hidePopoverTimer.current);
+      hidePopoverTimer.current = null;
+    }
+  };
+
+  const scheduleHidePopover = () => {
+    clearHideTimer();
+    const eventId = popover?.eventId ?? null;
+    const shouldClear = eventId ? clearOnLeaveRef.current.has(eventId) : false;
+    hidePopoverTimer.current = window.setTimeout(() => {
+    if (eventId && shouldClear) {
+      clearOnLeaveRef.current.delete(eventId);
+      handleIgnoreConsistency(eventId);
+      return;
+    }
+      setPopover(null);
+    }, 120);
+  };
+
+  const hasActionableSuggestion = (entry: ConsistencyCacheEntry) =>
+    entry.results.some((result) => {
+      if (!result.span) return false;
+      const spanText = entry.sourceTitle.slice(result.span.start, result.span.end);
+      const surfaces = [result.mostRecent?.surface, result.mostFrequent?.surface].filter(
+        Boolean
+      ) as string[];
+      return surfaces.some((surface) => surface !== spanText);
+    });
+
+  const handleEventHover = (eventId: string, anchor: HTMLElement) => {
+    if (!consistencyReady[eventId] && !consistencyPending[eventId]) return;
+    const readyEntry = consistencyReady[eventId];
+    const hasNoResults = Boolean(readyEntry && readyEntry.results.length === 0);
+    const actionable = readyEntry ? hasActionableSuggestion(readyEntry) : false;
+    if (readyEntry && !actionable && !hasNoResults) {
+      handleIgnoreConsistency(eventId);
+      return;
+    }
+    if (hasNoResults) {
+      clearOnLeaveRef.current.add(eventId);
+    }
+    clearHideTimer();
+    setPopover({ eventId, rect: anchor.getBoundingClientRect() });
+  };
+
+  const handleEventLeave = () => {
+    scheduleHidePopover();
+  };
+
+  const handlePopoverEnter = () => {
+    clearHideTimer();
+  };
+
+  const handlePopoverLeave = () => {
+    scheduleHidePopover();
+  };
+
+  const toggleSelection = (
+    eventId: string,
+    index: number,
+    surface: string
+  ) => {
+    setSelectionByEventId((prev) => {
+      const current = prev[eventId] ?? {};
+      const next = { ...current };
+      if (next[index] === surface) {
+        delete next[index];
+      } else {
+        next[index] = surface;
+      }
+      return { ...prev, [eventId]: next };
+    });
+  };
+
+  const buildNextTitle = (
+    sourceTitle: string,
+    results: ConsistencyRecommendation[],
+    selections: Record<number, string>
+  ) => {
+    const replacements = results
+      .map((result, index) => {
+        const surface = selections[index];
+        const span = result.span ?? null;
+        if (!surface || !span) return null;
+        return { start: span.start, end: span.end, surface };
+      })
+      .filter((item): item is { start: number; end: number; surface: string } => Boolean(item))
+      .sort((a, b) => b.start - a.start);
+
+    let nextTitle = sourceTitle;
+    for (const item of replacements) {
+      nextTitle = `${nextTitle.slice(0, item.start)}${item.surface}${nextTitle.slice(item.end)}`;
+    }
+    return nextTitle;
+  };
+
+  const handleIgnoreConsistency = (eventId: string) => {
+    clearOnLeaveRef.current.delete(eventId);
+    onIgnoreConsistency(eventId);
+    setSelectionByEventId((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    setPopover(null);
+  };
+
+  const handleDismissConsistency = (eventId: string) => {
+    clearOnLeaveRef.current.delete(eventId);
+    onDismissConsistency(eventId);
+    setSelectionByEventId((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    setPopover(null);
+  };
+
+  const handleApplyConsistency = (eventId: string) => {
+    const entry = consistencyReady[eventId];
+    if (!entry) return;
+    const selections = selectionByEventId[eventId] ?? {};
+    const nextTitle = buildNextTitle(entry.sourceTitle, entry.results, selections);
+    if (nextTitle === entry.sourceTitle) {
+      handleIgnoreConsistency(eventId);
+      return;
+    }
+    const pairs = entry.results
+      .map((result, index) => {
+        const appliedSurface = selections[index];
+        if (!appliedSurface) return null;
+        if (!result.canonicalName || !result.conceptType) return null;
+        return {
+          canonicalName: result.canonicalName,
+          conceptType: result.conceptType,
+          appliedSurface,
+        };
+      })
+      .filter(
+        (pair): pair is { canonicalName: string; conceptType: string; appliedSurface: string } =>
+          Boolean(pair)
+      );
+    if (pairs.length === 0) {
+      handleIgnoreConsistency(eventId);
+      return;
+    }
+    onApplyConsistency({
+      eventId,
+      beforeTitle: entry.sourceTitle,
+      afterTitle: nextTitle,
+      pairs,
+    });
+    setSelectionByEventId((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    setPopover(null);
+  };
+
+  const readyIds: Record<string, true> = useMemo(() => {
+    const entries: Record<string, true> = {};
+    Object.keys(consistencyReady).forEach((id) => {
+      entries[id] = true;
+    });
+    return entries;
+  }, [consistencyReady]);
+
+  const pendingIds: Record<string, true> = useMemo(() => {
+    const entries: Record<string, true> = {};
+    Object.keys(consistencyPending).forEach((id) => {
+      entries[id] = true;
+    });
+    return entries;
+  }, [consistencyPending]);
+
+  const activePopover = popover ? consistencyReady[popover.eventId] ?? null : null;
+  const isPopoverPending = popover ? Boolean(consistencyPending[popover.eventId]) : false;
+  const popoverSelections = popover ? selectionByEventId[popover.eventId] ?? {} : {};
+  const hasSelections = Object.keys(popoverSelections).length > 0;
+  let popoverStyle: CSSProperties | undefined;
+
+  useEffect(() => {
+    setActiveResultIndex(null);
+  }, [popover?.eventId]);
+
+  const activeResultsWithIndex = useMemo(
+    () => (activePopover ? activePopover.results.map((result, index) => ({ result, index })) : []),
+    [activePopover]
+  );
+
+  const displayResults = useMemo(() => {
+    if (activeResultIndex === null) return activeResultsWithIndex;
+    return activeResultsWithIndex.filter(({ index }) => index === activeResultIndex);
+  }, [activeResultsWithIndex, activeResultIndex]);
+
+  const highlightedSourceTitle = useMemo<ReactNode>(() => {
+    if (!activePopover) return null;
+    const sourceTitle = activePopover.sourceTitle;
+    const spans = activeResultsWithIndex
+      .filter(({ result }) => result.span)
+      .sort((a, b) => a.result.span!.start - b.result.span!.start);
+    if (spans.length === 0) return sourceTitle;
+
+    const parts: ReactNode[] = [];
+    let cursor = 0;
+    spans.forEach(({ result, index }) => {
+      const span = result.span!;
+      if (span.start > cursor) {
+        parts.push(sourceTitle.slice(cursor, span.start));
+      }
+      const text = sourceTitle.slice(span.start, span.end);
+      const isActive = activeResultIndex === index;
+      parts.push(
+        <span
+          key={`span-${index}-${span.start}`}
+          className={[
+            'rounded-sm px-1',
+            'cursor-pointer',
+            isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95 text-black',
+          ].join(' ')}
+          onMouseEnter={() => setActiveResultIndex(index)}
+        >
+          {text}
+        </span>
+      );
+      cursor = span.end;
+    });
+    if (cursor < sourceTitle.length) {
+      parts.push(sourceTitle.slice(cursor));
+    }
+    return parts;
+  }, [activePopover, activeResultsWithIndex, activeResultIndex]);
+
+  if (popover && typeof window !== 'undefined') {
+    const rect = popover.rect;
+    const width = 320;
+    const padding = 12;
+    const estimatedHeight = 220;
+    const centerX = rect.left + rect.width / 2;
+    const left = Math.min(
+      window.innerWidth - width - padding,
+      Math.max(padding, centerX - width / 2)
+    );
+    const placeAbove = rect.bottom + estimatedHeight > window.innerHeight;
+    const top = placeAbove ? rect.top - 8 : rect.bottom + 8;
+    popoverStyle = {
+      left,
+      top,
+      width,
+      transform: placeAbove ? 'translateY(-100%)' : 'translateY(0)',
+    };
+  }
+
   return (
     <div className="rounded-xl overflow-hidden border border-white/10">
       <WeekdayRow days={labels.month.weekdays} />
@@ -272,6 +567,10 @@ export default function MonthGrid({
                     suppressClick={suppressClick}
                     isDragging={dragging}
                     moreLabel={labels.month.moreItems}
+                    consistencyReady={readyIds}
+                    consistencyPending={pendingIds}
+                    onEventHover={handleEventHover}
+                    onEventLeave={handleEventLeave}
                     />
                 ))}
               </div>
@@ -293,6 +592,8 @@ export default function MonthGrid({
                         const offsetDays = diffDays(tempStart, segmentStartKey);
                         const positionRatio =
                           totalDays > segmentDays ? offsetDays / (totalDays - segmentDays) : 0;
+                        const hasReady = Boolean(readyIds[seg.event.id]);
+                        const hasPending = Boolean(pendingIds[seg.event.id]);
                         const draftStyle =
                           isTemp && totalDays > 0 && segmentDays > 0
                             ? {
@@ -325,6 +626,11 @@ export default function MonthGrid({
                               if (isTemp) return;
                               onClickEvent(seg.event.id);
                             }}
+                            onMouseEnter={(ev) => {
+                              if (isTemp) return;
+                              if (!hasReady && !hasPending) return;
+                              handleEventHover(seg.event.id, ev.currentTarget);
+                            }}
                             onMouseDown={(ev) => {
                               if (!isTemp) return;
                               ev.stopPropagation();
@@ -338,6 +644,10 @@ export default function MonthGrid({
                               setTempPressing(false);
                             }}
                             onMouseLeave={(ev) => {
+                              if (!isTemp && (hasReady || hasPending)) {
+                                handleEventLeave();
+                                return;
+                              }
                               if (!isTemp) return;
                               if (!tempPressing) return;
                               ev.stopPropagation();
@@ -345,6 +655,7 @@ export default function MonthGrid({
                               setTempPressing(false);
                             }}
                             variant={isTemp ? 'draft' : 'normal'}
+                            highlight={!isTemp && hasReady}
                             style={draftStyle}
                             />
                         </div>
@@ -363,6 +674,147 @@ export default function MonthGrid({
           );
         })}
       </div>
+
+      {popover &&
+        (activePopover || isPopoverPending) &&
+        popoverStyle &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            className="fixed z-50 rounded-xl border border-white/10 bg-[rgb(var(--panel))] p-3 text-xs text-white/80 shadow-xl"
+            style={popoverStyle}
+            onMouseEnter={handlePopoverEnter}
+            onMouseLeave={handlePopoverLeave}
+          >
+            <div className="mb-2 text-xs font-semibold text-white/85">
+              {labels.suggestions.resultsTitle}
+            </div>
+
+            {activePopover && (
+              <div className="mb-2 rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/70">
+                {highlightedSourceTitle}
+              </div>
+            )}
+
+            {isPopoverPending && (
+              <div className="rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/70">
+                {labels.suggestions.analyzing}
+              </div>
+            )}
+
+            {!isPopoverPending && activePopover?.results.length === 0 && (
+              <div className="rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/60">
+                {labels.suggestions.noResults}
+              </div>
+            )}
+
+            {!isPopoverPending &&
+              displayResults.map(({ result, index }) => {
+                const options = [];
+                if (result.mostRecent) {
+                  options.push({
+                    key: 'recent',
+                    label: labels.suggestions.mostRecent,
+                    surface: result.mostRecent.surface,
+                  });
+                }
+                if (
+                  result.mostFrequent &&
+                  result.mostFrequent.surface !== result.mostRecent?.surface
+                ) {
+                  options.push({
+                    key: 'frequent',
+                    label: labels.suggestions.mostFrequent,
+                    surface: result.mostFrequent.surface,
+                  });
+                }
+                const selectedSurface = popoverSelections[index];
+                const spanAvailable = Boolean(result.span);
+
+                return (
+                  <div
+                    key={`${result.canonicalName}-${index}`}
+                    className="mb-2 rounded-md border border-white/10 bg-white/5 px-2 py-2"
+                  >
+                    <div className="text-[11px] text-white/70">
+                      {result.inputSurface ?? result.canonicalName}
+                    </div>
+                    {!spanAvailable && (
+                      <div className="mt-1 text-[10px] text-white/40">
+                        {labels.suggestions.noSpan}
+                      </div>
+                    )}
+                    <div className="mt-1 flex flex-col gap-1">
+                      {options.length === 0 && (
+                        <div className="text-[10px] text-white/45">
+                          {labels.suggestions.noResults}
+                        </div>
+                      )}
+                      {options.map((option) => {
+                        const isSelected = selectedSurface === option.surface;
+                        return (
+                          <div
+                            key={`${option.key}-${option.surface}`}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-[10px] text-white/45">
+                              {option.label}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={!spanAvailable}
+                              className={[
+                                'rounded-md border px-2 py-1 text-[10px]',
+                                !spanAvailable && 'cursor-not-allowed text-white/35',
+                                spanAvailable && isSelected
+                                  ? 'border-white/30 bg-white/15 text-white'
+                                  : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              onClick={() => {
+                                if (!spanAvailable) return;
+                                toggleSelection(popover.eventId, index, option.surface);
+                              }}
+                            >
+                              {option.surface}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+            <div className="mt-3 flex items-center justify-between">
+              <button
+                type="button"
+                className="text-[11px] text-white/60 hover:text-white/85"
+                onClick={() => handleIgnoreConsistency(popover.eventId)}
+              >
+                {labels.suggestions.ignore}
+              </button>
+              {!isPopoverPending && (
+                <button
+                  type="button"
+                  className={[
+                    'rounded-md border px-2 py-1 text-[11px]',
+                    hasSelections
+                      ? 'border-white/30 bg-white/15 text-white'
+                      : 'border-white/10 bg-white/5 text-white/35',
+                  ].join(' ')}
+                  onClick={() => handleApplyConsistency(popover.eventId)}
+                  disabled={!hasSelections}
+                >
+                  {labels.suggestions.apply}
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

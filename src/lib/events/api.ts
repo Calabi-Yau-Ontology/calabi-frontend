@@ -11,6 +11,7 @@ type BackendEvent = {
   endTime?: string | null;
   location?: string | null;
   categoryId?: string | null;
+  nerCacheStatus?: 'pending' | 'ready' | 'error' | 'consumed' | null;
 };
 
 type EventPayload = {
@@ -79,6 +80,7 @@ const toCalendarEvent = (
     endDate,
     description: event.description ?? undefined,
     allDay: true,
+    nerCacheStatus: event.nerCacheStatus ?? null,
   };
 };
 
