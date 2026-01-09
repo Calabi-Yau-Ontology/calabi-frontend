@@ -397,13 +397,53 @@ export default function MonthGrid({
     setActiveResultIndex(null);
   }, [popover?.eventId]);
 
-  const displayResults = activePopover
-    ? activeResultIndex === null
-      ? activePopover.results.map((result, index) => ({ result, index }))
-      : activePopover.results
-          .map((result, index) => ({ result, index }))
-          .filter(({ index }) => index === activeResultIndex)
-    : [];
+  const activeResultsWithIndex = useMemo(
+    () => (activePopover ? activePopover.results.map((result, index) => ({ result, index })) : []),
+    [activePopover]
+  );
+
+  const displayResults = useMemo(() => {
+    if (activeResultIndex === null) return activeResultsWithIndex;
+    return activeResultsWithIndex.filter(({ index }) => index === activeResultIndex);
+  }, [activeResultsWithIndex, activeResultIndex]);
+
+  const highlightedSourceTitle = useMemo<ReactNode>(() => {
+    if (!activePopover) return null;
+    const sourceTitle = activePopover.sourceTitle;
+    const spans = activeResultsWithIndex
+      .filter(({ result }) => result.span)
+      .sort((a, b) => a.result.span!.start - b.result.span!.start);
+    if (spans.length === 0) return sourceTitle;
+
+    const parts: ReactNode[] = [];
+    let cursor = 0;
+    spans.forEach(({ result, index }) => {
+      const span = result.span!;
+      if (span.start > cursor) {
+        parts.push(sourceTitle.slice(cursor, span.start));
+      }
+      const text = sourceTitle.slice(span.start, span.end);
+      const isActive = activeResultIndex === index;
+      parts.push(
+        <span
+          key={`span-${index}-${span.start}`}
+          className={[
+            'rounded-sm px-1',
+            'cursor-pointer',
+            isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95',
+          ].join(' ')}
+          onMouseEnter={() => setActiveResultIndex(index)}
+        >
+          {text}
+        </span>
+      );
+      cursor = span.end;
+    });
+    if (cursor < sourceTitle.length) {
+      parts.push(sourceTitle.slice(cursor));
+    }
+    return parts;
+  }, [activePopover, activeResultsWithIndex, activeResultIndex]);
 
   if (popover && typeof window !== 'undefined') {
     const rect = popover.rect;
@@ -607,43 +647,7 @@ export default function MonthGrid({
 
             {activePopover && (
               <div className="mb-2 rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/70">
-                {(() => {
-                  const sourceTitle = activePopover.sourceTitle;
-                  const spans = activePopover.results
-                    .map((result, index) => ({ result, index }))
-                    .filter(({ result }) => result.span)
-                    .sort((a, b) => (a.result.span!.start - b.result.span!.start));
-                  if (spans.length === 0) return sourceTitle;
-
-                  const parts: ReactNode[] = [];
-                  let cursor = 0;
-                  spans.forEach(({ result, index }) => {
-                    const span = result.span!;
-                    if (span.start > cursor) {
-                      parts.push(sourceTitle.slice(cursor, span.start));
-                    }
-                    const text = sourceTitle.slice(span.start, span.end);
-                    const isActive = activeResultIndex === index;
-                    parts.push(
-                      <span
-                        key={`span-${index}-${span.start}`}
-                        className={[
-                          'rounded-sm px-1',
-                          'cursor-pointer',
-                          isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95',
-                        ].join(' ')}
-                        onMouseEnter={() => setActiveResultIndex(index)}
-                      >
-                        {text}
-                      </span>
-                    );
-                    cursor = span.end;
-                  });
-                  if (cursor < sourceTitle.length) {
-                    parts.push(sourceTitle.slice(cursor));
-                  }
-                  return parts;
-                })()}
+                {highlightedSourceTitle}
               </div>
             )}
 
