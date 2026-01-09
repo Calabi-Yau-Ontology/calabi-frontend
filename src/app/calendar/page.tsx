@@ -152,9 +152,12 @@ export default function HomePage() {
       const categoryId = patch.categoryId ?? existing?.categoryId ?? getDefaultCategoryId();
       const updated = await updateEvent(id, patch, categoryId);
       setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      const prevTitle = existing?.title ?? '';
+      const nextTitle = updated.title ?? '';
+      const didChangeTitle = prevTitle.trim() !== nextTitle.trim();
       if (skipConsistencyRef.current.has(id)) {
         skipConsistencyRef.current.delete(id);
-      } else {
+      } else if (didChangeTitle) {
         startConsistencyCheck(updated);
       }
     } catch (error) {
