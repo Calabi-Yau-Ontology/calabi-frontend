@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CalendarLayout from '@/components/layout/CalendarLayout';
 import MonthGrid from '@/components/month/MonthGrid';
@@ -17,6 +17,12 @@ import { clearAuthSession, getAuthToken, setAuthSession } from '@/lib/auth/stora
 import { createEvent, deleteEvent, fetchEvents, updateEvent } from '@/lib/events/api';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/lib/categories/api';
 import { updateUserPreferences } from '@/lib/user/preferences';
+import { runConsistencyCheck } from '@/lib/suggestions/api';
+import { loadConsistencyCache, saveConsistencyCache } from '@/lib/suggestions/storage';
+import type {
+  ConsistencyCacheEntry,
+  ConsistencyPendingEntry,
+} from '@/types/suggestions';
 
 export default function HomePage() {
   const router = useRouter();
@@ -46,6 +52,86 @@ export default function HomePage() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit'>('create');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [consistencyReady, setConsistencyReady] = useState<Record<string, ConsistencyCacheEntry>>({});
+  const [consistencyPending, setConsistencyPending] = useState<Record<string, ConsistencyPendingEntry>>({});
+  const skipConsistencyRef = useRef<Set<string>>(new Set());
+  const ignoredConsistencyRef = useRef<Set<string>>(new Set());
+  const consistencyRequestRef = useRef<Record<string, string>>({});
+
+  const clearConsistencyEntry = (eventId: string) => {
+    setConsistencyReady((prev) => {
+      if (!prev[eventId]) return prev;
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    setConsistencyPending((prev) => {
+      if (!prev[eventId]) return prev;
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    ignoredConsistencyRef.current.delete(eventId);
+    delete consistencyRequestRef.current[eventId];
+  };
+
+  const startConsistencyCheck = async (event: CalendarEvent) => {
+    const title = event.title?.trim();
+    if (!title) return;
+    const requestId = `${event.id}-${Date.now()}`;
+    consistencyRequestRef.current[event.id] = requestId;
+    ignoredConsistencyRef.current.delete(event.id);
+    setConsistencyPending((prev) => ({
+      ...prev,
+      [event.id]: { sourceTitle: title, startedAt: Date.now() },
+    }));
+    setConsistencyReady((prev) => {
+      if (!prev[event.id]) return prev;
+      const next = { ...prev };
+      delete next[event.id];
+      return next;
+    });
+
+    try {
+      const response = await runConsistencyCheck(title);
+      if (consistencyRequestRef.current[event.id] !== requestId) return;
+      if (ignoredConsistencyRef.current.has(event.id)) return;
+
+      setConsistencyReady((prev) => ({
+        ...prev,
+        [event.id]: {
+          sourceTitle: title,
+          createdAt: Date.now(),
+          results: response.results ?? [],
+        },
+      }));
+    } catch (error) {
+      console.error('Failed to run consistency check', error);
+    } finally {
+      setConsistencyPending((prev) => {
+        if (!prev[event.id]) return prev;
+        const next = { ...prev };
+        delete next[event.id];
+        return next;
+      });
+    }
+  };
+
+  const onIgnoreConsistency = (eventId: string) => {
+    ignoredConsistencyRef.current.add(eventId);
+    clearConsistencyEntry(eventId);
+  };
+
+  const onApplyConsistency = async (eventId: string, nextTitle: string) => {
+    try {
+      skipConsistencyRef.current.add(eventId);
+      await onUpdate(eventId, { title: nextTitle });
+      clearConsistencyEntry(eventId);
+    } catch (error) {
+      console.error('Failed to apply consistency suggestions', error);
+      skipConsistencyRef.current.delete(eventId);
+    }
+  };
 
   // create
   const onCreate = async (draft: Omit<CalendarEvent, 'id'>) => {
@@ -53,6 +139,7 @@ export default function HomePage() {
       const created = await createEvent(draft);
       setEvents((prev) => [created, ...prev]);
       setTempClearToken((prev) => prev + 1);
+      startConsistencyCheck(created);
     } catch (error) {
       console.error('Failed to create event', error);
     }
@@ -65,6 +152,11 @@ export default function HomePage() {
       const categoryId = patch.categoryId ?? existing?.categoryId ?? getDefaultCategoryId();
       const updated = await updateEvent(id, patch, categoryId);
       setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      if (skipConsistencyRef.current.has(id)) {
+        skipConsistencyRef.current.delete(id);
+      } else {
+        startConsistencyCheck(updated);
+      }
     } catch (error) {
       console.error('Failed to update event', error);
     }
@@ -75,6 +167,7 @@ export default function HomePage() {
     try {
       await deleteEvent(id);
       setEvents((prev) => prev.filter((e) => e.id !== id));
+      clearConsistencyEntry(id);
     } catch (error) {
       console.error('Failed to delete event', error);
     }
@@ -243,6 +336,15 @@ export default function HomePage() {
   }, [authReady]);
 
   useEffect(() => {
+    const cached = loadConsistencyCache();
+    setConsistencyReady(cached);
+  }, []);
+
+  useEffect(() => {
+    saveConsistencyCache(consistencyReady);
+  }, [consistencyReady]);
+
+  useEffect(() => {
     if (!authReady || categories.length === 0) return;
     let active = true;
     const fallbackCategoryId = getDefaultCategoryId();
@@ -259,6 +361,25 @@ export default function HomePage() {
       active = false;
     };
   }, [authReady, categories]);
+
+  useEffect(() => {
+    if (events.length === 0) return;
+    const ids = new Set(events.map((e) => e.id));
+    setConsistencyReady((prev) => {
+      const next: Record<string, ConsistencyCacheEntry> = {};
+      Object.entries(prev).forEach(([id, entry]) => {
+        if (ids.has(id)) next[id] = entry;
+      });
+      return next;
+    });
+    setConsistencyPending((prev) => {
+      const next: Record<string, ConsistencyPendingEntry> = {};
+      Object.entries(prev).forEach(([id, entry]) => {
+        if (ids.has(id)) next[id] = entry;
+      });
+      return next;
+    });
+  }, [events]);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('calabi-theme') : null;
@@ -321,6 +442,10 @@ export default function HomePage() {
         onClickTempRange={onClickTempRange}
         clearTempToken={tempClearToken}
         labels={labels}
+        consistencyReady={consistencyReady}
+        consistencyPending={consistencyPending}
+        onIgnoreConsistency={onIgnoreConsistency}
+        onApplyConsistency={onApplyConsistency}
       />
 
       <EventModal

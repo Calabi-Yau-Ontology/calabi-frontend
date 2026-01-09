@@ -18,6 +18,10 @@ type Props = {
   suppressClick: boolean;
   isDragging: boolean;
   moreLabel: (count: number) => string;
+  consistencyReady: Record<string, true>;
+  consistencyPending: Record<string, true>;
+  onEventHover: (eventId: string, anchor: HTMLElement) => void;
+  onEventLeave: () => void;
 };
 
 export default function DayCell({
@@ -33,6 +37,10 @@ export default function DayCell({
   suppressClick,
   isDragging,
   moreLabel,
+  consistencyReady,
+  consistencyPending,
+  onEventHover,
+  onEventLeave,
 }: Props) {
   const key = toDateKey(day.date);
 
@@ -90,17 +98,30 @@ export default function DayCell({
         className="flex flex-col gap-[2px] overflow-hidden -mx-2"
         style={{ marginTop: 4 + topPad }}
         >
-        {visible.map((e) => (
+        {visible.map((e) => {
+          const hasReady = Boolean(consistencyReady[e.id]);
+          const hasPending = Boolean(consistencyPending[e.id]);
+          return (
             <EventItem
-            key={e.id}
-            title={e.title}
-            color={colorByCategoryId.get(e.categoryId) ?? '#999999'}
-            onClick={(ev) => {
+              key={e.id}
+              title={e.title}
+              color={colorByCategoryId.get(e.categoryId) ?? '#999999'}
+              onClick={(ev) => {
                 ev?.stopPropagation?.();
                 onClickEvent(e.id);
-            }}
+              }}
+              onMouseEnter={(ev) => {
+                if (!hasReady && !hasPending) return;
+                onEventHover(e.id, ev.currentTarget);
+              }}
+              onMouseLeave={() => {
+                if (!hasReady && !hasPending) return;
+                onEventLeave();
+              }}
+              highlight={hasReady}
             />
-        ))}
+          );
+        })}
 
         {remaining > 0 && (
             <button

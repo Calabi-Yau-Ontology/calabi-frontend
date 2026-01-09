@@ -8,6 +8,8 @@ type Props = {
   onMouseDown?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseUp?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseEnter?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  highlight?: boolean;
   style?: React.CSSProperties;
 };
 
@@ -29,6 +31,8 @@ export default function EventItem({
   onMouseDown,
   onMouseUp,
   onMouseLeave,
+  onMouseEnter,
+  highlight,
   style,
 }: Props) {
   const bg = hexToRgba(color, 0.28);          // 네온 느낌 핵심: 반투명 배경
@@ -40,6 +44,10 @@ export default function EventItem({
   const isDraft = variant === 'draft';
   const rainbow =
     'linear-gradient(90deg, rgba(255,0,86,0.35), rgba(255,142,0,0.35), rgba(255,214,0,0.35), rgba(0,200,140,0.35), rgba(0,130,255,0.35), rgba(160,80,255,0.35))';
+  const rainbowBorder =
+    'conic-gradient(from 120deg, rgba(255,0,86,0.8), rgba(255,142,0,0.8), rgba(255,214,0,0.8), rgba(0,200,140,0.8), rgba(0,130,255,0.8), rgba(160,80,255,0.8), rgba(255,0,86,0.8))';
+  const showHighlight = Boolean(highlight && !isDraft);
+  const highlightBg = hexToRgba(color, 0.42);
 
   return (
     <button
@@ -48,7 +56,9 @@ export default function EventItem({
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
+      onMouseEnter={onMouseEnter}
       className={cn(
+        'relative',
         'mx-[1px]',
         'w-[calc(100%-2px)]',
         'h-[18px]',                 // 얇게
@@ -68,6 +78,13 @@ export default function EventItem({
               boxShadow: '0 0 0 1px rgba(255,255,255,0.12)',
               ...style,
             }
+          : showHighlight
+          ? {
+              backgroundColor: highlightBg,
+              border: '1px solid transparent',
+              boxShadow: '0 0 10px rgba(255,255,255,0.28)',
+              ...style,
+            }
           : {
               backgroundColor: bg,
               border: `1px solid ${border}`,
@@ -77,7 +94,23 @@ export default function EventItem({
       }
       title={title}
     >
-      {title}
+      {showHighlight && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[9px]"
+          style={
+            {
+              padding: 1,
+              background: rainbowBorder,
+              WebkitMask:
+                'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            } as React.CSSProperties
+          }
+        />
+      )}
+      <span className="relative z-10">{title}</span>
     </button>
   );
 }
