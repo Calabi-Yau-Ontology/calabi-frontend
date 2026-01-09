@@ -162,6 +162,13 @@ export default function EventModal({
   }, [open, mode, event, defaultDateKey, defaultEndDateKey, categories]);
 
   useEffect(() => {
+    if (!open || uiMode !== 'create') return;
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+    });
+  }, [open, uiMode]);
+
+  useEffect(() => {
     if (!open || uiMode === 'view') return;
     const { fragment } = extractFragment(draft.title);
     if (!fragment) {
