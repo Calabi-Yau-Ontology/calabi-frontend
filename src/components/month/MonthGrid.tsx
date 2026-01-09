@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import WeekdayRow from './WeekdayRow';
@@ -614,7 +615,7 @@ export default function MonthGrid({
                     .sort((a, b) => (a.result.span!.start - b.result.span!.start));
                   if (spans.length === 0) return sourceTitle;
 
-                  const parts: Array<JSX.Element | string> = [];
+                  const parts: ReactNode[] = [];
                   let cursor = 0;
                   spans.forEach(({ result, index }) => {
                     const span = result.span!;
