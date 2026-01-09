@@ -105,7 +105,10 @@ export default function EventModal({
       const extra = value.startsWith(pending.appliedTitle)
         ? value.slice(pending.appliedTitle.length)
         : null;
-      if (extra && pending.fragment.startsWith(extra)) {
+      if (
+        extra &&
+        (pending.fragment.startsWith(extra) || pending.fragment.endsWith(extra))
+      ) {
         lastAutocompleteApplyRef.current = null;
         setDraft((p) => ({ ...p, title: pending.appliedTitle }));
         return;

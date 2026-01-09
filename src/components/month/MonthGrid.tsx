@@ -85,8 +85,10 @@ export default function MonthGrid({
   const [tempPressing, setTempPressing] = useState(false);
   const [popover, setPopover] = useState<{ eventId: string; rect: DOMRect } | null>(null);
   const [selectionByEventId, setSelectionByEventId] = useState<Record<string, Record<number, string>>>({});
+  const [activeResultIndex, setActiveResultIndex] = useState<number | null>(null);
   const hidePopoverTimer = useRef<number | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const clearOnLeaveRef = useRef<Set<string>>(new Set());
 
   const days = getMonthGrid(year, month); // length 42
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
@@ -250,7 +252,14 @@ export default function MonthGrid({
 
   const scheduleHidePopover = () => {
     clearHideTimer();
+    const eventId = popover?.eventId ?? null;
+    const shouldClear = eventId ? clearOnLeaveRef.current.has(eventId) : false;
     hidePopoverTimer.current = window.setTimeout(() => {
+      if (eventId && shouldClear) {
+        clearOnLeaveRef.current.delete(eventId);
+        handleIgnoreConsistency(eventId);
+        return;
+      }
       setPopover(null);
     }, 120);
   };
@@ -268,10 +277,14 @@ export default function MonthGrid({
   const handleEventHover = (eventId: string, anchor: HTMLElement) => {
     if (!consistencyReady[eventId] && !consistencyPending[eventId]) return;
     const readyEntry = consistencyReady[eventId];
+    const hasNoResults = Boolean(readyEntry && readyEntry.results.length === 0);
     const actionable = readyEntry ? hasActionableSuggestion(readyEntry) : false;
-    if (readyEntry && !actionable) {
+    if (readyEntry && !actionable && !hasNoResults) {
       onIgnoreConsistency(eventId);
       return;
+    }
+    if (hasNoResults) {
+      clearOnLeaveRef.current.add(eventId);
     }
     clearHideTimer();
     setPopover({ eventId, rect: anchor.getBoundingClientRect() });
@@ -286,7 +299,7 @@ export default function MonthGrid({
   };
 
   const handlePopoverLeave = () => {
-    setPopover(null);
+    scheduleHidePopover();
   };
 
   const toggleSelection = (
@@ -329,6 +342,7 @@ export default function MonthGrid({
   };
 
   const handleIgnoreConsistency = (eventId: string) => {
+    clearOnLeaveRef.current.delete(eventId);
     onIgnoreConsistency(eventId);
     setSelectionByEventId((prev) => {
       const next = { ...prev };
@@ -377,6 +391,18 @@ export default function MonthGrid({
   const popoverSelections = popover ? selectionByEventId[popover.eventId] ?? {} : {};
   const hasSelections = Object.keys(popoverSelections).length > 0;
   let popoverStyle: CSSProperties | undefined;
+
+  useEffect(() => {
+    setActiveResultIndex(null);
+  }, [popover?.eventId]);
+
+  const displayResults = activePopover
+    ? activeResultIndex === null
+      ? activePopover.results.map((result, index) => ({ result, index }))
+      : activePopover.results
+          .map((result, index) => ({ result, index }))
+          .filter(({ index }) => index === activeResultIndex)
+    : [];
 
   if (popover && typeof window !== 'undefined') {
     const rect = popover.rect;
@@ -578,6 +604,48 @@ export default function MonthGrid({
               {labels.suggestions.resultsTitle}
             </div>
 
+            {activePopover && (
+              <div className="mb-2 rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/70">
+                {(() => {
+                  const sourceTitle = activePopover.sourceTitle;
+                  const spans = activePopover.results
+                    .map((result, index) => ({ result, index }))
+                    .filter(({ result }) => result.span)
+                    .sort((a, b) => (a.result.span!.start - b.result.span!.start));
+                  if (spans.length === 0) return sourceTitle;
+
+                  const parts: Array<JSX.Element | string> = [];
+                  let cursor = 0;
+                  spans.forEach(({ result, index }) => {
+                    const span = result.span!;
+                    if (span.start > cursor) {
+                      parts.push(sourceTitle.slice(cursor, span.start));
+                    }
+                    const text = sourceTitle.slice(span.start, span.end);
+                    const isActive = activeResultIndex === index;
+                    parts.push(
+                      <span
+                        key={`span-${index}-${span.start}`}
+                        className={[
+                          'rounded-sm px-1',
+                          'cursor-pointer',
+                          isActive ? 'bg-white/35 text-white' : 'bg-white/20 text-white/95',
+                        ].join(' ')}
+                        onMouseEnter={() => setActiveResultIndex(index)}
+                      >
+                        {text}
+                      </span>
+                    );
+                    cursor = span.end;
+                  });
+                  if (cursor < sourceTitle.length) {
+                    parts.push(sourceTitle.slice(cursor));
+                  }
+                  return parts;
+                })()}
+              </div>
+            )}
+
             {isPopoverPending && (
               <div className="rounded-md border border-white/10 bg-white/5 px-2 py-2 text-[11px] text-white/70">
                 {labels.suggestions.analyzing}
@@ -591,7 +659,7 @@ export default function MonthGrid({
             )}
 
             {!isPopoverPending &&
-              activePopover?.results.map((result, index) => {
+              displayResults.map(({ result, index }) => {
                 const options = [];
                 if (result.mostRecent) {
                   options.push({
@@ -626,7 +694,7 @@ export default function MonthGrid({
                         {labels.suggestions.noSpan}
                       </div>
                     )}
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="mt-1 flex flex-col gap-1">
                       {options.length === 0 && (
                         <div className="text-[10px] text-white/45">
                           {labels.suggestions.noResults}
@@ -635,26 +703,33 @@ export default function MonthGrid({
                       {options.map((option) => {
                         const isSelected = selectedSurface === option.surface;
                         return (
-                          <button
+                          <div
                             key={`${option.key}-${option.surface}`}
-                            type="button"
-                            disabled={!spanAvailable}
-                            className={[
-                              'rounded-md border px-2 py-1 text-[10px]',
-                              !spanAvailable && 'cursor-not-allowed text-white/35',
-                              spanAvailable && isSelected
-                                ? 'border-white/30 bg-white/15 text-white'
-                                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            onClick={() => {
-                              if (!spanAvailable) return;
-                              toggleSelection(popover.eventId, index, option.surface);
-                            }}
+                            className="flex items-center gap-2"
                           >
-                            {option.label} · {option.surface}
-                          </button>
+                            <span className="text-[10px] text-white/45">
+                              {option.label}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={!spanAvailable}
+                              className={[
+                                'rounded-md border px-2 py-1 text-[10px]',
+                                !spanAvailable && 'cursor-not-allowed text-white/35',
+                                spanAvailable && isSelected
+                                  ? 'border-white/30 bg-white/15 text-white'
+                                  : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              onClick={() => {
+                                if (!spanAvailable) return;
+                                toggleSelection(popover.eventId, index, option.surface);
+                              }}
+                            >
+                              {option.surface}
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
